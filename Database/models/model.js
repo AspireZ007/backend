@@ -1,35 +1,54 @@
 const mongoose = require("mongoose");
 const { v4: uuidv4 } = require("uuid");
 
-const status = {};
-
+const UserStatus = {
+  TEMPORARY: 0,
+  PERMANENT: 1,
+  BANNED: -1,
+};
 const userSchema = new mongoose.Schema({
   id: {
     type: String,
     default: uuidv4,
     unique: true,
   },
-  name: String,
+  name: {
+    type: String,
+    required: true,
+  },
   email: {
     type: String,
+    required: true,
     unique: true,
-    required: true
   },
-  password: String,
-  phone_number:{
+  password: {
     type: String,
-    unique: true,
-    required: true
+    required: true,
+  },
+  phone_number: {
+    type: String,
+    required: true,
+  }, status: {
+    type: Number,
+    default: UserStatus.TEMPORARY,
   },
   username: {
     type: String,
+    required: true,
     unique: true,
-    required: true
   },
-
-  interests: [String],
-  college: String,
-  token: String,
+  interests: {
+    type: [String],
+    required: false,
+  },
+  college: {
+    type: String,
+    required: true,
+  },
+  token: {
+    type: String,
+    required: true,
+  },
 });
 
 const User = mongoose.model("users", userSchema);

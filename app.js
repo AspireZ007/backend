@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 const bodyparser = require("body-parser");
 const jwt = require("jsonwebtoken");
@@ -5,7 +6,7 @@ const nodemailer = require("nodemailer");
 const app = express();
 const validation = require("./validation");
 const Window = require("window");
-
+const secretkey = process.env.SECRET_KEY;
 const index = require("./Database/index");
 const database = require("./Database/database");
 
@@ -57,7 +58,7 @@ app.get("/", async (req, res) => {
 app.get("/verify/:token", async (req, res) => {
   const token = req.params.token;
   user =  await index.getDetailsByToken(token);
-  const user_id = user[0].username;
+  const user_id = user.username;
   const b = token.split(".")[1];
   const decrpt = JSON.parse(Buffer.from(b, "base64").toString("ascii"));
   const recived_id = decrpt.username;
@@ -73,7 +74,7 @@ app.get("/verify/:token", async (req, res) => {
 app.post("/signup", async (req, res) => {
   const payload = req.body;
   const {name , email , password , phone_number , username , college} = payload;
-  const token = jwt.sign(payload, "aspirez");
+  const token = jwt.sign({email: email, username: username}, secretkey);
   const b = token.split(".")[1];
   try {
     index.createUser(name , email , password , phone_number , username , null , college , token);

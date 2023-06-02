@@ -1,5 +1,6 @@
+require("dotenv").config();
 const mongoose = require("mongoose");
-
+const URI = process.env.MONGODB_URI;
 const database = () => {
   const connectionParams = {
     useNewUrlParser: true,
@@ -8,7 +9,7 @@ const database = () => {
 
   try {
     mongoose.connect(
-      "mongodb+srv://aspirezofficial:aspirez007@aspirez.g46ctxn.mongodb.net/aspirez?retryWrites=true&w=majority",
+      URI,
       connectionParams
     );
     console.log("Connection successful");

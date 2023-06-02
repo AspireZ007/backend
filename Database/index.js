@@ -1,5 +1,5 @@
 const User = require("./models/model");
-
+const bcrypt = require("bcryptjs");
 async function createUser(
   i_name,
   i_email,
@@ -10,11 +10,13 @@ async function createUser(
   i_college,
   i_token
 ) {
+  const salt = 10;
+  const hashedpassword = bcrypt.hashSync(i_password, salt);
   try {
     const newUser = new User({
       name: i_name,
       email: i_email,
-      password: i_password,
+      password: hashedpassword,
       phone_number: i_phone_number,
       username: i_username,
       interests: i_interests,

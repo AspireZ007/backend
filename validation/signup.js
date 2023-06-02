@@ -12,12 +12,13 @@ async function signupValidation(credentials){
         return "400";
     if(password !== confirm_password)
         return "401";
-    if(emailFormatValidator(email)) return "400a";
-    if(nameFormatValidator(name)) return "400c";
-    if(collegeNameFormatValidator(college)) return "400e";
-    if(usernameFormatValidator(name)) return "400d";
-    if(checkExistance({username : username})) return "409b";
-    if(checkExistance({email : email})) return "409a";
+    if(!passwordFormatValidator(password)) return "400b";
+    if(!emailFormatValidator(email)) return "400a";
+    if(!nameFormatValidator(name)) return "400c";
+    if(!collegeNameFormatValidator(college)) return "400e";
+    if(!usernameFormatValidator(name)) return "400d";
+    if(!checkExistance({username : username})) return "409b";
+    if(!checkExistance({email : email})) return "409a";
     return "200";    
 }
 

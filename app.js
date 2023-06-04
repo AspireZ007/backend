@@ -15,10 +15,13 @@ const signup_validation = require('./validation/signup');
 const salt = 10
 app.use(bodyparser.json());
 app.use(bodyparser.urlencoded({ extended: true }));
+
+
 const errorCodesDescription = {
-  "200": "OK",
-  "201": "Created",
+  "200": "Login successful",
+  "201b": "Account Successfully Created",
   "400": "Bad Request",
+  "400z" : "Empty Fields detected",
   "400a": "Invalid Email",
   "400b": "Invalid Password",
   "400c": "Invalid Name",
@@ -30,11 +33,18 @@ const errorCodesDescription = {
   "409a": "Email Already Exists",
   "409b": "Username Already Exists",
   "500": "Internal Server Error",
+  "201a" : "Email sucessfully sent"
 
 }
 
+
+/**
+ * 
+ * @param {string} token 
+ * @param {string} reciver 
+ */
+
 const sendMail = (token, reciver) => {
-  console.log("sending mail");
   const transporter = nodemailer.createTransport({
     host: "smtp-mail.outlook.com",
     secureConnection: false,
@@ -70,36 +80,56 @@ const sendMail = (token, reciver) => {
   });
 };
 
-
+/**
+ * home get request
+ */
 app.get("/", async (req, res) => {
   res.send("Hello World");
 });
 
+
+/**
+ * email verification get request
+ * @param {string} token
+ */
 app.get("/verify/:token", async (req, res) => {
   const token = req.params.token;
-  user = await index.getDetailsByToken(token);
+  try{
+    user = await index.getDetailsByToken(token);
+    if(!user) res.status(400).json({ error: errorCodesDescription['400'] });
+  }
+  catch(err){
+    res.status(500).json({ message: errorCodesDescription['500'] });
+  }
   const user_id = user.username;
   const b = token.split(".")[1];
   const decrpt = JSON.parse(Buffer.from(b, "base64").toString("ascii"));
   const recived_id = decrpt.username;
+
+  //status of the user should be changed to verified
   if (user_id == recived_id) {
-    res.send("Email verified");
+    res.status(201).send(errorCodesDescription['201b']);
   } else {
-    res.send("Email not verified");
+    res.status(400).json({ error: errorCodesDescription['400'] });
   }
-  console.log(user)
-  console.log("received user : " + recived_id + "user_id : " + user_id);
 });
 
 
-
+/**
+  * signup post request
+  * @param {string} name
+  * @param {string} email
+  * @param {string} password
+  * @param {string} phone_number
+  * @param {string} username
+  * @param {string} college
+  * @param {string} confirm_password
+  * @returns {json} status
+*/
 app.post("/signup", async (req, res) => {
   const payload = req.body;
   const { name, email, password, phone_number, username, college, confirm_password } = payload;
-  // if(password !== confirm_password)
-  //   return res.status(401).json({error : "Password Mismatch"});
   signup_validation(payload).then((validation_result) => {
-    console.log(validation_result);
     if (validation_result == "200") {
       const hashedpassword = bcrypt.hashSync(password, salt);
       const token = jwt.sign({ email: email, username: username }, secretkey);
@@ -107,11 +137,11 @@ app.post("/signup", async (req, res) => {
       index.createUser(name, email, hashedpassword, phone_number, username, null, college, token).then((httpcode) => {
         if (httpcode == 201) {
           sendMail(token, req.body.email);
-          res.status(201).json({ message: "Account created Succussfully" });
+          res.status(201).json({ message: errorCodesDescription['201a'] });
         } else if (httpcode == 409) {
-          res.status(409).json({ error: "Already exists" });
+          res.status(409).json({ error: errorCodesDescription['409a'] });
         } else {
-          res.status(500).json({ error: "Internal Server Error" });
+          res.status(500).json({ error: errorCodesDescription['500'] });
         }
       });
     }
@@ -122,104 +152,29 @@ app.post("/signup", async (req, res) => {
 });
 
 
-
-// app.post("/signup", async (req, res) => {
-//   const payload = req.body;
-//   const { name, email, password, phone_number, username, college, confirm_password } = payload;
-//   const validation_result = signup_validation(payload);
-//   console.log(validation_result, errorCodesDescription, errorCodesDescription.get(validation_result));
-//   // const validation_result = "200";
-//   if (validation_result == "200") {
-//     const hashedpassword = bcrypt.hashSync(password, salt);
-//     const token = jwt.sign({ email: email, username: username }, secretkey);
-//     const b = token.split(".")[1];
-//     try {
-//       const httpcode = await index.createUser(name, email, hashedpassword, phone_number, username, null, college, token);
-//       if (httpcode == 201) {
-//         try{
-//           sendMail(token, req.body.email);
-//           res.status(201).json({ message: "Account created Succussfully" });
-//         }catch(err){
-
-//           res.status(400).json({ message: "Error in sending email" });
-//         }
-//       } else if (httpcode == 409) {
-//         res.status(409).json({ error: "Already exists" });
-//       } else if (httpcode == 500) {
-//         res.status(500).json({ error: "Internal server error" })
-//       }
-
-//     } catch (err) {
-//       console.log(err);
-//     }
-//     const decrpt = JSON.parse(Buffer.from(b, "base64").toString("ascii"));
-//     console.log(req.body);
-//     // res.send(decrpt);
-//   }
-//   else{
-//     res.status(400).json({error: errorCodesDescription[validation_result]})
-//   }
-//   // else if (validation_result == "400") {
-//   //   res.status(400).json({ error: "Missing Parameters" })
-//   // }
-//   // else if (validation_result == "401") {
-//   //   res.status(401).json({ error: "Confirm Password doesn't match" })
-//   // } else if (validation_result == "400a") {
-//   //   res.status(400).json({ error: "Invalid Mail Format" })
-//   // } else if (validation_result == "400c") {
-//   //   res.status(400).json({ error: "Invalid Name" })
-//   // } else if (validation_result == "400e") {
-//   //   res.status(400).json({ error: "Invalid College" })
-//   // } else if (validation_result == "409a") {
-//   //   res.status(409).json({ error: "Email Already exists" })
-//   // } else if (validation_result == "409b") {
-//   //   res.status(409).json({ error: "Username Already exists" })
-//   // } else if (validation_result == "400f") {
-//   //   res.status(400).json({ error: "Invalid Username" })
-//   // } else if(validation_result == "400g"){
-//   //   res.status(400).json({ error: "Invalid Phone Number" })
-//   // }
-
-// });
-
-
-// app.post("/signup", async (req, res) => {
-//   const payload = req.body;
-//   const {name , email , password , phone_number , username , college} = payload;
-//   const token = jwt.sign({email: email, username: username}, secretkey);
-//   const b = token.split(".")[1];
-//   console.log(b);
-//   try {
-//     await index.createUser(name , email , password , phone_number , username , null , college , token);
-//     sendMail(token, req.body.email);
-//   } catch (err) {
-//     console.log(err);
-//   }
-//   const decrpt = JSON.parse(Buffer.from(b, "base64").toString("ascii"));
-//   console.log(req.body);
-//   res.send(decrpt);
-// });
-
+/**
+ * login post request
+ * @param {string} email
+ * @param {string} password
+ * @returns {json} status
+ */
 app.post("/login", async (req, res) => {
   const result = await login(req.body.email, req.body.password);
-  if (result == 200) {
-    res.send(result);
+  if (result === "200") {
+    res.status(200).json({ status: errorCodesDescription[result] });
   }
-  else if (result == 404) {
-    res.status(404).json({ error: "Email Not Found" })
-  } else if (result == 401) {
-    res.status(401).json({ error: "Incorrect Password" })
-  } else if (result == "400") {
-    res.status(400).json({ error: "Empty Fields" })
-  } else if (result == "400a") {
-    res.status(400).json({ error: "Invalid Email Format " })
-  } else if (result == "400b") {
-    res.status(400).json({ error: "Invalid Password Format" })
+  else{
+    res.status(Number(result.substring(0, 3))).json({ error: errorCodesDescription[result] });
   }
-
 });
 
 
+/**
+ * listen to port 3000
+ * @param {number} port
+ * @returns {string} message
+ * @returns {string} error
+*/
 app.listen(3000, () => {
   try {
     database();

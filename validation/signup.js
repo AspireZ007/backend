@@ -5,8 +5,6 @@ const usernameFormatValidator = require('./utilities/usernameformatvalidator');
 const collegeNameFormatValidator = require('./utilities/collegenameformatvalidator');
 const checkExistance = require('../Database/index').checkExistance;
 
-
-
 /**
 
 Validates the signup credentials provided by the user.
@@ -54,7 +52,6 @@ HTTP status code indicating the result of the validation process.
 
 async function signupValidation(credentials){
     const {name , email , password , confirm_password , phone_number , username , college} = credentials;
-    console.log(username)
     if(!name || !email || !password || !confirm_password || !phone_number || !username || !college) 
         return "400z";
     if(password !== confirm_password)

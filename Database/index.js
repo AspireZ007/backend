@@ -1,5 +1,6 @@
 const User = require("./models/model");
 const bcrypt = require("bcryptjs");
+const logger = require("../validation/utilities/logger.js");
 
 async function createUser(
   i_name,
@@ -11,7 +12,7 @@ async function createUser(
   i_college,
   i_token
 ) {
-  const salt = 10;
+  const salt = Number(process.env.SALT);
   try {
     const newUser = new User({
       name: i_name,
@@ -25,16 +26,16 @@ async function createUser(
     });
 
     await newUser.save();
-    console.log("inserted");
+    logger.info(`User with email : ${email} added successfully to database`);
     return 201;
   } catch (err) {
 
     if (err.code == 11000 || err.code == 11001) {
-      console.error("duplicate key", err.keyValue);
+      logger.error("duplicate key", err.keyValue);
       return 409
       
     }
-    console.error("Error saving user:", err);
+    logger.error("Error saving user:", err);
     return 500
   }
 }
@@ -42,7 +43,6 @@ async function createUser(
 
 // login 
 module.exports.getLoginStatus = async (i_email, i_password) => {
-  // console.log(i_email, i_password,"Types", typeof i_email, typeof i_password);
   try {
     const users = await User.findOne({ email: i_email });
     if (!users) {
@@ -56,7 +56,7 @@ module.exports.getLoginStatus = async (i_email, i_password) => {
       return -2; //password mismatch
     }
   } catch (err) {
-    console.log(err);
+    logger.error(err);
   }
 }
 
@@ -65,7 +65,7 @@ async function getDetailsByToken(i_token) {
     const users = await User.findOne({ token: i_token });
     return users; 
   } catch (err) {
-    console.error("Error finding users:", err);
+    logger.error("Error finding users:", err);
     return 500
   }
 }
@@ -78,7 +78,7 @@ async function checkExistance(query){
     if(!result) return false;
     return true;
   }catch (err) {
-    console.log("Error" , err);
+    logger.error(err);
   }
 }
 

@@ -1,5 +1,10 @@
-// Function to validate name (alphabets)
-module.exports = nameformatvalidator = (name) => {
+/**
+ * 
+ * @param {String} name 
+ * @returns {Boolean} true if the name is valid or false otherwise
+ * @description : Function to validate the user's Name format
+ */
+const nameformatvalidator = (name) => {
     const minLength = 4;
     const maxLength = 50;
     const regex = /^[a-zA-Z\s]+$/;
@@ -7,5 +12,4 @@ module.exports = nameformatvalidator = (name) => {
     return name.length >= minLength && name.length <= maxLength && regex.test(name);
   };
 
-
-  //return res.status(400).json({ error: 'Invalid name. It should be 4-50 characters long and contain alphabets only.' });
+  module.exports = nameformatvalidator;

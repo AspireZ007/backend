@@ -4,24 +4,27 @@ const bodyparser = require("body-parser");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 const app = express();
-const validation = require("./validation");
-const Window = require("window");
 const secretkey = process.env.SECRET_KEY;
 const index = require("./Database/index");
 const database = require("./Database/database");
 const bcrypt = require("bcryptjs");
 const login = require('./validation/login');
 const signup_validation = require('./validation/signup');
-const salt = 10
+const salt = Number(process.env.SALT)
+const logger = require("./validation/utilities/logger.js");
+
 app.use(bodyparser.json());
 app.use(bodyparser.urlencoded({ extended: true }));
 
 
+/**
+ * @description : mapping for error codes to message
+ */
 const errorCodesDescription = {
   "200": "Login successful",
   "201b": "Account Successfully Created",
   "400": "Bad Request",
-  "400z" : "Empty Fields detected",
+  "400z": "Empty Fields detected",
   "400a": "Invalid Email",
   "400b": "Invalid Password",
   "400c": "Invalid Name",
@@ -33,8 +36,7 @@ const errorCodesDescription = {
   "409a": "Email Already Exists",
   "409b": "Username Already Exists",
   "500": "Internal Server Error",
-  "201a" : "Email sucessfully sent"
-
+  "201a": "Email sucessfully sent"
 }
 
 
@@ -73,19 +75,13 @@ const sendMail = (token, reciver) => {
   // send mail with defined transport object
   transporter.sendMail(mailOptions, function (error, info) {
     if (error) {
-      return console.log(error);
+      logger.error(error);
+      return;
     }
 
-    console.log("Message sent: " + info.response);
+    logger.info("Verification mail sent: " + info.response);
   });
 };
-
-/**
- * home get request
- */
-app.get("/", async (req, res) => {
-  res.send("Hello World");
-});
 
 
 /**
@@ -94,11 +90,11 @@ app.get("/", async (req, res) => {
  */
 app.get("/verify/:token", async (req, res) => {
   const token = req.params.token;
-  try{
+  try {
     user = await index.getDetailsByToken(token);
-    if(!user) res.status(400).json({ error: errorCodesDescription['400'] });
+    if (!user) res.status(400).json({ error: errorCodesDescription['400'] });
   }
-  catch(err){
+  catch (err) {
     res.status(500).json({ message: errorCodesDescription['500'] });
   }
   const user_id = user.username;
@@ -163,7 +159,7 @@ app.post("/login", async (req, res) => {
   if (result === "200") {
     res.status(200).json({ status: errorCodesDescription[result] });
   }
-  else{
+  else {
     res.status(Number(result.substring(0, 3))).json({ error: errorCodesDescription[result] });
   }
 });
@@ -180,7 +176,7 @@ app.listen(3000, () => {
     database();
   }
   catch (err) {
-    console.log(err);
+    logger.error(err);
   }
-  console.log("Server is running on port 3000");
+  logger.info("Server is running on port 3000");
 });

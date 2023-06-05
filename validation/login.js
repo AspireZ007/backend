@@ -27,7 +27,6 @@ HTTP status code indicating the result of the validation process.
 
 
 async function loginValidation(email, password) {
-    // const {email , password} = credentials;
     if (!email || !password)
     return "400z";
     email = email.trim();

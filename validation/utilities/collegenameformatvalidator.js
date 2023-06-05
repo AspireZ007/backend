@@ -1,9 +1,12 @@
-// Function to validate college (alphanumeric)
-const isValidCollege = (college) => {
+/**
+ * 
+ * @param {String} collegeName 
+ * @returns {Boolean} Returns true if the College is valid or false otherwise
+ * @description : Function to validate college Name
+ */
+const isValidCollege = (collegeName) => {
     const regex = /^[a-zA-Z0-9\s]+$/;
-    return regex.test(college);
+    return regex.test(collegeName);
   };
   
   module.exports = isValidCollege;
-  ``
-  //return res.status(400).json({ error: 'Invalid college. It should be alphanumeric.' });

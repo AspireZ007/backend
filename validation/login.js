@@ -11,6 +11,7 @@ Validates the login credentials provided by the user.
 @returns {string} - The HTTP status code indicating the result of the login validation.
 
 Output:
+
 Returns an HTTP status code as a string, indicating the result of the login validation.
 Possible values:
 "200" - Successful login.

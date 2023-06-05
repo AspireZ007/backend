@@ -26,7 +26,7 @@ async function createUser(
     });
 
     await newUser.save();
-    logger.info(`User with email : ${email} added successfully to database`);
+    logger.info(`User with email : ${i_email} added successfully to database`);
     return 201;
   } catch (err) {
 

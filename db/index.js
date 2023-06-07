@@ -1,6 +1,6 @@
-const User = require("./models/model");
+const User = require("./models/user/model");
 const bcrypt = require("bcryptjs");
-const logger = require("../validation/utilities/logger.js");
+const logger = require("../helpers/logger.js");
 
 async function createUser(
   i_name,

@@ -3,7 +3,7 @@ const nameFormatValidator = require('./utilities/nameformatvalidator');
 const passwordFormatValidator = require('./utilities/passwordformatvalidator');
 const usernameFormatValidator = require('./utilities/usernameformatvalidator');
 const collegeNameFormatValidator = require('./utilities/collegenameformatvalidator');
-const checkExistance = require('../Database/index').checkExistance;
+const checkExistance = require('../db/index').checkExistance;
 
 /**
 

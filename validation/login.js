@@ -1,4 +1,4 @@
-const server = require('../Database/index');
+const server = require('../db/index');
 const passwordValidator = require('./utilities/passwordformatvalidator');
 const emailValidator = require('./utilities/emailformatvalidator');
 
@@ -28,26 +28,26 @@ HTTP status code indicating the result of the validation process.
 
 
 async function loginValidation(email, password) {
-    if (!email || !password)
-    return "400z";
-    email = email.trim();
-    password = password.trim();
-    if (!email || !password)
-    return "400z";
-    if (!emailValidator(email))
-        return "400a";
-    if (!passwordValidator(password))
-        return "400b";
-    const user = await server.getLoginStatus(email , password);
-    if (user === -1) {
-        return "404";
-    }
-    else if (user === -2) {
-        return "401";
-    }
-    else {
-        return "200";
-    }
+	if (!email || !password)
+		return "400z";
+	email = email.trim();
+	password = password.trim();
+	if (!email || !password)
+		return "400z";
+	if (!emailValidator(email))
+		return "400a";
+	if (!passwordValidator(password))
+		return "400b";
+	const user = await server.getLoginStatus(email, password);
+	if (user === -1) {
+		return "404";
+	}
+	else if (user === -2) {
+		return "401";
+	}
+	else {
+		return "200";
+	}
 }
 
 module.exports = loginValidation;

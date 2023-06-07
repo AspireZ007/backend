@@ -1,182 +1,59 @@
-require("dotenv").config();
-const express = require("express");
-const bodyparser = require("body-parser");
-const jwt = require("jsonwebtoken");
-const nodemailer = require("nodemailer");
-const app = express();
-const secretkey = process.env.SECRET_KEY;
-const index = require("./Database/index");
-const database = require("./Database/database");
-const bcrypt = require("bcryptjs");
-const login = require('./validation/login');
-const signup_validation = require('./validation/signup');
-const salt = Number(process.env.SALT)
-const logger = require("./validation/utilities/logger.js");
+// Dependencies Import
+const express = require("express")
+const bodyParser = require("body-parser")
+const mongoose = require("mongoose")
 
-app.use(bodyparser.json());
-app.use(bodyparser.urlencoded({ extended: true }));
+// Environment Variables
+const dotenv = require("dotenv")
 
+// Logger Import
+const logger = require("./helpers/logger")
 
-/**
- * @description : mapping for error codes to message
- */
-const errorCodesDescription = {
-  "200": "Login successful",
-  "201b": "Account Successfully Created",
-  "400": "Bad Request",
-  "400z": "Empty Fields detected",
-  "400a": "Invalid Email",
-  "400b": "Invalid Password",
-  "400c": "Invalid Name",
-  "400d": "Invalid Username",
-  "400e": "Invalid College Name",
-  "401": "Password Mismatch",
-  "404": "User Not Found",
-  "409": "Conflict",
-  "409a": "Email Already Exists",
-  "409b": "Username Already Exists",
-  "500": "Internal Server Error",
-  "201a": "Email sucessfully sent"
-}
+// Routes Import
+const authRoutes = require("./routes/auth/routes")
 
+// Creating Express App
+const app = express()
+app.use(bodyParser.json())
+app.use(bodyParser.urlencoded({ extended: true }))
 
-/**
- * 
- * @param {string} token 
- * @param {string} reciver 
- */
+// setting up routes
+app.use('/auth', authRoutes)
 
-const sendMail = (token, reciver) => {
-  const transporter = nodemailer.createTransport({
-    host: "smtp-mail.outlook.com",
-    secureConnection: false,
-    port: 587,
-    tls: {
-      ciphers: "SSLv3",
-    },
-    auth: {
-      user: "aspirezofficial@outlook.com",
-      pass: "aspirez007",
-    },
-  });
+// starting server
+mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+	.then(() => {
+		console.log("Database connection successful, now attempting to start server.")
+		try {
+			const server = app.listen(process.env.PORT, () => {
+				console.log('Server running on port ' + process.env.PORT)
+				logger.info('Server running on port ' + process.env.PORT)
+			})
 
-  let message = `Hi! There, You have recently visited
-  our website and entered your email.
-  Please follow the given link to verify your email
-  http://localhost:3000/verify/${token}
-  Thanks`;
-  var mailOptions = {
-    from: "aspirezofficial@outlook.com", // sender address (who sends)
-    to: reciver, // list of receivers (who receives)
-    subject: "Email Verification", // Subject line
-    text: message, // plaintext body
-  };
+			// Handle any unhandled promise rejections
+			process.on('unhandledRejection', (err) => {
+				console.error(`Unhandled promise rejection: ${err}`)
+				logger.error(`Unhandled promise rejection: ${err}`)
+				server.close(() => {
+					process.exit(1)
+				})
+			})
 
-  // send mail with defined transport object
-  transporter.sendMail(mailOptions, function (error, info) {
-    if (error) {
-      logger.error(error);
-      return;
-    }
-
-    logger.info("Verification mail sent: " + info.response);
-  });
-};
-
-
-/**
- * email verification get request
- * @param {string} token
- */
-app.get("/verify/:token", async (req, res) => {
-  const token = req.params.token;
-  try {
-    user = await index.getDetailsByToken(token);
-    if (!user) res.status(400).json({ error: errorCodesDescription['400'] });
-  }
-  catch (err) {
-    res.status(500).json({ message: errorCodesDescription['500'] });
-  }
-  const user_id = user.username;
-  const b = token.split(".")[1];
-  const decrpt = JSON.parse(Buffer.from(b, "base64").toString("ascii"));
-  const recived_id = decrpt.username;
-
-  //status of the user should be changed to verified
-  if (user_id == recived_id) {
-    res.status(201).send(errorCodesDescription['201b']);
-  } else {
-    res.status(400).json({ error: errorCodesDescription['400'] });
-  }
-});
-
-
-/**
-  * signup post request
-  * @param {string} name
-  * @param {string} email
-  * @param {string} password
-  * @param {string} phone_number
-  * @param {string} username
-  * @param {string} college
-  * @param {string} confirm_password
-  * @returns {json} status
-*/
-app.post("/signup", async (req, res) => {
-  const payload = req.body;
-  const { name, email, password, phone_number, username, college, confirm_password } = payload;
-  signup_validation(payload).then((validation_result) => {
-    if (validation_result == "200") {
-      const hashedpassword = bcrypt.hashSync(password, salt);
-      const token = jwt.sign({ email: email, username: username }, secretkey);
-      const b = token.split(".")[1];
-      index.createUser(name, email, hashedpassword, phone_number, username, null, college, token).then((httpcode) => {
-        if (httpcode == 201) {
-          sendMail(token, req.body.email);
-          res.status(201).json({ message: errorCodesDescription['201a'] });
-        } else if (httpcode == 409) {
-          res.status(409).json({ error: errorCodesDescription['409a'] });
-        } else {
-          res.status(500).json({ error: errorCodesDescription['500'] });
-        }
-      });
-    }
-    else {
-      res.status(400).json({ error: errorCodesDescription[validation_result] })
-    }
-  });
-});
-
-
-/**
- * login post request
- * @param {string} email
- * @param {string} password
- * @returns {json} status
- */
-app.post("/login", async (req, res) => {
-  const result = await login(req.body.email, req.body.password);
-  if (result === "200") {
-    res.status(200).json({ status: errorCodesDescription[result] });
-  }
-  else {
-    res.status(Number(result.substring(0, 3))).json({ error: errorCodesDescription[result] });
-  }
-});
-
-
-/**
- * listen to port 3000
- * @param {number} port
- * @returns {string} message
- * @returns {string} error
-*/
-app.listen(3000, () => {
-  try {
-    database();
-  }
-  catch (err) {
-    logger.error(err);
-  }
-  logger.info("Server is running on port 3000");
-});
+			// Handle any uncaught exceptions
+			process.on('uncaughtException', (err) => {
+				console.error(`Uncaught exception: ${err}`)
+				logger.error(`Uncaught exception: ${err}`)
+				server.close(() => {
+					process.exit(1)
+				})
+			})
+		} catch (error) {
+			console.error(`Error starting server: ${error}`)
+			logger.error(`Error starting server: ${error}`)
+			process.exit(1)
+		}
+	})
+	.catch((err) => {
+		console.log('MongoDB connection error: ', err)
+		logger.error(err)
+	})

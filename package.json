@@ -5,7 +5,7 @@
   "main": "app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node app.js"
+    "start": "nodemon app.js"
   },
   "author": "aspirez",
   "license": "ISC",
@@ -15,13 +15,16 @@
     "dotenv": "^16.1.4",
     "express": "^4.18.2",
     "force": "^0.0.3",
+    "joi": "^17.9.2",
     "jsonwebtoken": "^9.0.0",
     "moment": "^2.29.4",
     "mongoose": "^7.2.2",
     "nodemailer": "^6.9.3",
-    "nodemon": "^2.0.22",
     "uuid": "^9.0.0",
     "winston": "^3.9.0"
   },
-  "keywords": []
+  "keywords": [],
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  }
 }

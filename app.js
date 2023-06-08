@@ -1,26 +1,31 @@
-// Dependencies Import
-const express = require("express")
-const bodyParser = require("body-parser")
-const mongoose = require("mongoose")
+// External Dependencies
+const express 				= require("express")
+const bodyParser 			= require("body-parser")
+const mongoose 				= require("mongoose")
 
-// Environment Variables
-const dotenv = require("dotenv")
+// Environment Variables and Logger
+const dotenv 					= require("dotenv")
+const logger 					= require("./helpers/logger")
 
-// Logger Import
-const logger = require("./helpers/logger")
+// Setting up Swagger Docs
+const swaggerJSDoc 		= require('swagger-jsdoc');
+const swaggerUi 			= require('swagger-ui-express');
+const swaggerOptions 	= require("./helpers/swagger");
+const swaggerSpec 		= swaggerJSDoc(swaggerOptions);
 
-// Routes Import
-const authRoutes = require("./routes/auth/routes")
+// Importing Routes
+const authRoutes = require("./routes/auth/routes");
 
 // Creating Express App
 const app = express()
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// setting up routes
+// Setting up routes
 app.use('/auth', authRoutes)
 
-// starting server
+// Starting server
 mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
 	.then(() => {
 		console.log("Database connection successful, now attempting to start server.")

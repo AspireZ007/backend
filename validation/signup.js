@@ -1,6 +1,5 @@
-const emailFormatValidator = require('./utilities/emailformatvalidator');
+
 const nameFormatValidator = require('./utilities/nameformatvalidator');
-const passwordFormatValidator = require('./utilities/passwordformatvalidator');
 const usernameFormatValidator = require('./utilities/usernameformatvalidator');
 const collegeNameFormatValidator = require('./utilities/collegenameformatvalidator');
 const checkExistance = require('../db/index').checkExistance;
@@ -56,8 +55,6 @@ async function signupValidation(credentials){
         return "400z";
     if(password !== confirm_password)
         return "401";
-    if(!passwordFormatValidator(password)) return "400b";
-    if(!emailFormatValidator(email)) return "400a";
     if(!nameFormatValidator(name)) return "400c";
     if(!collegeNameFormatValidator(college)) return "400e";
     if(!usernameFormatValidator(username)) return "400d";

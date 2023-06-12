@@ -12,17 +12,22 @@ const USERROLE_CODES = {
 }
 
 const userSchema = new mongoose.Schema({
-  firstName: 		{ type: String, required: true },
-  lastName: 		{ type: String, required: true },
+  firstname: 		{ type: String, required: true },
+  lastname: 		{ type: String, required: true },
   email: 				{ type: String, required: true, unique: true },
   password: 		{ type: String, required: true },
-  phone_number: { type: String, required: true },
+  phone: 				{ type: String, required: true },
+	username: 		{ type: String, required: true, unique: true },
+	college: 			{ type: String, required: true },
+
+	interests: 		{ type: [String], required: true, default: [] },
+
   status: 			{ type: Number, required: true, default: USERSTATUS_CODES.TEMPORARY },
   role: 				{ type: Number, required: true, default: USERROLE_CODES.REGULAR },
-  username: 		{ type: String, required: true, unique: true },
-  interests: 		{ type: [String], required: true, default: [] },
-  college: 			{ type: String, required: true },
-  token: 				{ type: String, required: true }
+  
+  otp: 					{ type: String }, 
+	createdAt: 		{ type: Date, required: true, default: Date.now }
+
 })
 
 const User = mongoose.model("users", userSchema)

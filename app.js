@@ -8,19 +8,19 @@ const dotenv 					= require("dotenv")
 const logger 					= require("./helpers/logger")
 
 // Setting up Swagger Docs
-const swaggerJSDoc 		= require('swagger-jsdoc');
-const swaggerUi 			= require('swagger-ui-express');
-const swaggerOptions 	= require("./helpers/swagger");
-const swaggerSpec 		= swaggerJSDoc(swaggerOptions);
+const swaggerJSDoc 		= require('swagger-jsdoc')
+const swaggerUi 			= require('swagger-ui-express')
+const swaggerOptions 	= require("./helpers/swagger")
+const swaggerSpec 		= swaggerJSDoc(swaggerOptions)
 
 // Importing Routes
-const authRoutes = require("./routes/auth/routes");
+const authRoutes = require("./routes/auth/routes")
 
 // Creating Express App
 const app = express()
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec))
 
 // Setting up routes
 app.use('/auth', authRoutes)

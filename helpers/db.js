@@ -1,6 +1,33 @@
+const mongoose = require("mongoose")
+
 const User = require("../db/models/user/model")
+
 const { USERSTATUS_CODES } = require("../db/models/user/model")
+
 const logger = require("./logger")
+
+
+/**
+ * Connect to a MongoDB database using Mongoose.
+ *
+ * @returns {Promise<boolean>} - A Promise that resolves to a boolean 
+ * 	indicating whether the connection was successful.
+ */
+const connectToDatabase = async () => {
+	try {
+		await mongoose.connect(process.env.MONGODB_URI, {
+			useNewUrlParser: true,
+			useUnifiedTopology: true
+		});
+		console.log("Database connection successful.")
+		logger.info("Database connection successful.")
+		return true
+	} catch (err) {
+		console.log('MongoDB connection error: ', err)
+		logger.error('MongoDB connection error: ', err)
+		return false
+	}
+}
 
 /**
  * Asynchronously checks if a user exists in the database based on their email and username
@@ -51,3 +78,4 @@ const checkIfUserExists = async (email, username) => {
 }
 
 module.exports.checkIfUserExists = checkIfUserExists
+module.exports.connectToDatabase = connectToDatabase

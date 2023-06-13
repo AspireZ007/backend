@@ -32,7 +32,7 @@ const sendVerificationEmail = async (otp, receiverEmailString) => {
 	// Compose the verification email message as an HTML string
 	const message = `Hi! There, You have attempted to register to our website AspireZ.
 		Please follow the given link to verify your email
-		http://localhost:3000/verify/${otp}.
+		http://localhost:3000/auth/verify/${otp}.
 		Thanks`
 
 	// Construct the mail options object for nodemailer

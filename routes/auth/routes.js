@@ -16,7 +16,7 @@ const logger = require('../../helpers/logger')
 // Database
 const User = require('../../db/models/user/model')
 
-const { loginValidator, signupValidator } = require('./validators')
+const { loginValidator, signupValidator , otpValidator } = require('./validators')
 const { generateResponseMessage } = require('../../helpers/response')
 
 // Constants
@@ -30,7 +30,48 @@ const router = express.Router()
 // router.post('/forgotPassword', authController.forgotPassword)
 // router.put('/resetPassword/:token', authController.resetPassword)
 // router.post('/usernameAvailable', authController.isUsernameAvailable)
-// router.post('/verify/:otp', authController.verifyOTP)
+
+/**
+ * Route to verify otp received upon signing up
+ *
+ * @param {Object} req - The HTTP request object.
+ * @param {Object} res - The HTTP response object.
+ */
+router.post('/verify/:otp', async(req, res) => {
+
+	// extract otp
+	const otp = req.params.otp
+
+	//validate otp
+	const {error} = otpValidator.validate({otp : otp})
+
+	if(error) {
+		return res.status(400).json(generateResponseMessage("error", error.details[0].message))
+	}
+	try{
+		//check if OTP is valid and does exist in our database
+		const user = await User.findOne({otp},{
+			status: 1 , otp : 1
+		})
+		if(!user) {
+			return res.status(400).json(generateResponseMessage("error", "Invalid OTP"))
+		}
+
+		//change user status to permanent from temporary
+		user.status = USERSTATUS_CODES.PERMANENT
+
+		//nullify otp as we have no use of it further
+		user.otp = null
+
+		//update the user record
+		await user.save()
+		res.json(generateResponseMessage("success", "User Verified Successfully"))
+	}
+	catch(error){
+		logger.error(error)
+		res.status(400).json(generateResponseMessage("error" , error.message))
+	}
+})
 
 /**
  * Route to handle user authentication and generate a JSON web token.
@@ -77,7 +118,7 @@ router.post("/login", async (req, res) => {
 		delete tokenPayload.password
 		delete tokenPayload.status
 
-		const token = jwt.sign(tokenPayload, process.env.SECRET_KEY, {
+		const token = jwt.sign(tokenPayload, process.env.SECRET_KEY, { //jwt token content to be reviewed
 			expiresIn: '1h'
 		})
 		res.json({ token })

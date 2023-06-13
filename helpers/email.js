@@ -50,7 +50,7 @@ const sendVerificationEmail = async (otp, receiverEmailString) => {
 		return 1
 	} catch (err) {
 		// Log any errors and return a status indicating failure
-		logger.error(`Error in sending email to ${receiverEmailString}`, error)
+		logger.error(`Error in sending email to ${receiverEmailString}`, err)
 		return -1
 	}
 }

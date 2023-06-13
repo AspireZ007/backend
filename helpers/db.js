@@ -50,4 +50,6 @@ const checkIfUserExists = async (email, username) => {
 	}
 }
 
+
+
 module.exports.checkIfUserExists = checkIfUserExists

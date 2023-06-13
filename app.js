@@ -25,6 +25,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec))
 // Setting up routes
 app.use('/auth', authRoutes)
 
+
 // Starting server
 mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
 	.then(() => {
@@ -52,6 +53,7 @@ mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTop
 					process.exit(1)
 				})
 			})
+			
 		} catch (error) {
 			console.error(`Error starting server: ${error}`)
 			logger.error(`Error starting server: ${error}`)

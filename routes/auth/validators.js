@@ -18,7 +18,7 @@ const emailSchema = Joi.string()
 
 // Define the schema for password
 const passwordSchema = Joi.string()
- .required()
+ .required() // repeated required to be removed
  .min(8)
  .max(20)
  .required()
@@ -26,8 +26,8 @@ const passwordSchema = Joi.string()
  .messages({
     'string.base': 'Password should be a string.',
     'string.empty': 'Password cannot be empty.',
-    'string.min': 'Password should be at least {#limit} characters long.',
-    'string.max': 'Password should not be longer than {#limit} characters.',
+    'string.min': 'Password should be at least 8 characters long.',
+    'string.max': 'Password should not be longer than 20 characters.',
     'string.pattern.base': 'Password should contain at least one digit, one letter (uppercase or lowercase) and one special character (@#$%^&+=).'
   });
 
@@ -40,8 +40,8 @@ const firstnameSchema = Joi.string()
  .messages({
     'string.base': 'Name should be a string.',
     'string.empty': 'Name cannot be empty.',
-    'string.min': 'Name should have a minimum length of {#limit} characters.',
-    'string.max': 'Name should have a maximum length of {#limit} characters.',
+    'string.min': 'Name should have a minimum length of 2 characters.',
+    'string.max': 'Name should have a maximum length of 3 characters.',
     'string.pattern.base': 'Name should only contain alphabet characters, periods and apostrophes.'
   });
 
@@ -54,8 +54,8 @@ const lastnameSchema = Joi.string()
  .messages({
     'string.base': 'Name should be a string.',
     'string.empty': 'Name cannot be empty.',
-    'string.min': 'Name should have a minimum length of {#limit} characters.',
-    'string.max': 'Name should have a maximum length of {#limit} characters.',
+    'string.min': 'Name should have a minimum length of 1 characters.',
+    'string.max': 'Name should have a maximum length of 20 characters.',
     'string.pattern.base': 'Name should only contain alphabet characters, periods and apostrophes.'
   });
 
@@ -67,8 +67,8 @@ const phoneSchema = Joi.string()
  .messages({
     'string.base': 'Phone should be a string.',
     'string.empty': 'Phone cannot be empty.',
-    'string.min': 'Phone should have a minimum length of {#limit} characters.',
-    'string.max': 'Phone should have a maximum length of {#limit} characters.',
+    'string.min': 'Phone should have a minimum length of 10 characters.',
+    'string.max': 'Phone should have a maximum length of 10 characters.',
     'string.pattern.base': 'Phone should be a valid Indian phone number, no special characters, just 10 digits.'
   });
 
@@ -80,7 +80,7 @@ const usernameSchema = Joi.string()
  .messages({
     'string.base': 'Username should be a string.',
     'string.empty': 'Username cannot be empty.',
-    'string.min': 'Username should have a minimum length of {#limit} characters.',
+    'string.min': 'Username should have a minimum length of 3 characters.',
     'string.pattern.base': 'Username should contain only alphanumeric characters and underscores, starting with an alphabet or an underscore.'
   });
 
@@ -95,8 +95,8 @@ const collegeSchema = Joi.string()
     'string.base': 'College should be a string.',
     'string.empty': 'College cannot be empty.',
     'string.pattern.base': 'College should only contain alphanumeric characters.',
-    'string.min': 'College should have a minimum length of {#limit} characters.',
-    'string.max': 'College should have a maximum length of {#limit} characters.'
+    'string.min': 'College should have a minimum length of 2 characters.',
+    'string.max': 'College should have a maximum length of 255 characters.'
   });
 
 // Define the schema for login

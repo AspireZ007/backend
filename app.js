@@ -14,6 +14,7 @@ const swaggerSpec = swaggerJSDoc(swaggerOptions)
 
 // Importing Routes
 const authRoutes = require("./routes/auth/routes")
+const connectionRoutes = require("./routes/connection/routes")
 
 // DB Helper
 const { connectToDatabase } = require("./helpers/db")
@@ -26,6 +27,8 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec))
 
 // Setting up routes
 app.use('/auth', authRoutes)
+app.use('/connection', connectionRoutes)
+
 
 const dbConnectionSuccess = connectToDatabase()
 if (dbConnectionSuccess) {

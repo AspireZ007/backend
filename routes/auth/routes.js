@@ -30,6 +30,7 @@ const router = express.Router()
 // router.post('/forgotPassword', authController.forgotPassword)
 // router.put('/resetPassword/:token', authController.resetPassword)
 // router.post('/usernameAvailable', authController.isUsernameAvailable)
+// router.post('/verify/:otp', authController.verifyOTP)
 
 /**
  * Route to handle user authentication and generate a JSON web token.
@@ -66,7 +67,7 @@ router.post("/login", async (req, res) => {
 
 		// Check the current status of the user
 		if (!user.status != USERSTATUS_CODES.PERMANENT) {
-			return res.status(400).json({ message: 'Invalid Credentials' })
+			return res.status(400).json({ message: 'Login Prohibited' })
 		}
 
 		const tokenPayload = {
@@ -81,7 +82,7 @@ router.post("/login", async (req, res) => {
 		})
 		res.json({ token })
 	} catch (error) {
-		console.error(error)
+		logger.error(error)
 		res.status(500).json({ message: 'Server Error' })
 	}
 })

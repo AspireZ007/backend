@@ -1,6 +1,6 @@
 
 const User = require('../user/model')
-const logger = require("../../helpers/logger")
+const logger = require("../../../helpers/logger")
 
 /**
  * Asynchronously checks if a user exists in the database based on their UUID

@@ -15,6 +15,7 @@ const swaggerSpec 		= swaggerJSDoc(swaggerOptions)
 
 // Importing Routes
 const authRoutes = require("./routes/auth/routes")
+const connectionRoutes = require("./routes/connection/routes")
 
 // Creating Express App
 const app = express()
@@ -24,6 +25,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec))
 
 // Setting up routes
 app.use('/auth', authRoutes)
+app.use('/connection', connectionRoutes)
 
 
 // Starting server

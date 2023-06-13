@@ -1,6 +1,6 @@
 // External Import
 const express = require('express')
-const logger = require("../../helpers/logger")
+const logger = require("../../helpers/logger.js")
 
 // Instantiating the router object
 const router = express.Router()
@@ -42,17 +42,20 @@ router.post('/create', async (req, res) => {
         return res.status(500).json(generateResponseMessage("Database constraints violated"))
     }
 
-    const connection = new Connection({ following : followingId, follower : followerId })
-
     try{
+        const existingConnection = await Connection.find({ following : followingId, follower : followerId })
+        if(existingConnection.length > 0){
+            return res.status(404).json(generateResponseMessage("Connection already exists"))
+        }
+
+        const connection = new Connection({ following : followingId, follower : followerId })
         const savedConnection = await connection.save()
         return res.status(200).json(generateResponseMessage("Connection created successfully", savedConnection))
     }
     catch(error){
         logger.error(error)
         return res.status(500).json(generateResponseMessage("Internal Server Error"))
-    }
-        
+    }  
 })
 
 /**
@@ -102,3 +105,5 @@ router.post('/remove', async (req, res) => {
         return res.status(500).json(generateResponseMessage("Internal Server Error"))
     }    
 })
+
+module.exports = router

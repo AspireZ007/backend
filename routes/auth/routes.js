@@ -16,7 +16,7 @@ const logger = require('../../helpers/logger')
 // Database
 const User = require('../../db/models/user/model')
 
-const { loginValidator, signupValidator , otpValidator } = require('./validators')
+const { loginValidator, signupValidator , otpValidator , passwordValidator } = require('./validators')
 const { generateResponseMessage } = require('../../helpers/response')
 
 // Constants
@@ -28,7 +28,86 @@ const router = express.Router()
 
 // TODO: finish these routes
 // router.post('/forgotPassword', authController.forgotPassword)
-// router.put('/resetPassword/:token', authController.resetPassword)
+
+
+/**
+ * Route to reset user's password
+ *
+ * @param {Object} req - The HTTP request object.
+ * @param {Object} res - The HTTP response object.
+ */
+router.put('/resetPassword', async(req, res) => {
+	const {oldPassword, newPassword , confirmNewPaswword } = req.body
+
+	// overwhelming parameters
+	if(req.body.length > 3){
+		return res.status(400).json(generateResponseMessage("error", "Invalid request"))
+	}
+
+	// check if all parameters are present
+	if(!oldPassword || !newPassword || !confirmNewPaswword){
+		return res.status(400).json(generateResponseMessage("error", "All fields are required"))
+	}
+
+	// check if old password is same as new password
+	if(oldPassword === newPassword){
+		return res.status(400).json(generateResponseMessage("error", "New password cannot be same as old password"))
+	}
+
+	// check if new password and confirm new password are same
+	if(newPassword !== confirmNewPaswword){
+		return res.status(400).json(generateResponseMessage("error", "Passwords do not match"))
+	}
+
+	// remove confirm new password from request body
+	delete req.body.confirmNewPaswword
+
+	// validate old password
+	const {oldPasswordError} = passwordValidator.validate({password: oldPassword})
+	if(oldPasswordError){
+		return res.status(400).json(generateResponseMessage("error", "Old password : " + error.details[0].message))
+	}
+
+	// validate new password
+	const {newPasswordError} = passwordValidator.validate({password: newPassword})
+	if(newPasswordError){
+		return res.status(400).json(generateResponseMessage("error", "New password : " + error.details[0].message))
+	}
+
+	const userId = req.userId
+
+	try{
+		// check if user exists with given id
+		const user = await User.findById(userId)
+
+		if(!user){
+			return res.status(400).json(generateResponseMessage("error", "User does not exist"))
+		}
+
+		// check if old password is correct
+		const isMatch = await bcrypt.compare(oldPassword, user.password)
+
+		if(!isMatch){
+			return res.status(400).json(generateResponseMessage("error", "Old password is incorrect"))
+		}
+
+		// hash the new password
+		const hashedPassword = await hashPassword(newPassword)
+
+		// update the user record
+		user.password = hashedPassword
+
+		// save the user record
+		await user.save()
+
+		res.json(generateResponseMessage("success", "Password changed successfully"))
+	}
+	catch(error){
+		logger.error(error)
+		res.status(400).json(generateResponseMessage("error", error.message))
+	}
+})
+
 // router.post('/usernameAvailable', authController.isUsernameAvailable)
 
 /**
@@ -201,7 +280,6 @@ router.post("/signup", async (req, res) => {
 		return res.status(500).json(generateResponseMessage("error", error))
 	}
 })
-
 
 
 module.exports = router

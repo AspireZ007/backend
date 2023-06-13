@@ -134,5 +134,9 @@ const otpValidator = Joi.object({
   otp: otpSchema
 })
 
+const passwordValidator = Joi.object({
+  password: passwordSchema
+})
+
 // Export the schemas
-module.exports = { loginValidator, signupValidator , otpValidator }
+module.exports = { loginValidator, signupValidator , otpValidator , passwordValidator }

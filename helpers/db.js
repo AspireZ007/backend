@@ -18,7 +18,7 @@ const connectToDatabase = async () => {
 		await mongoose.connect(process.env.MONGODB_URI, {
 			useNewUrlParser: true,
 			useUnifiedTopology: true
-		});
+		})
 		console.log("Database connection successful.")
 		logger.info("Database connection successful.")
 		return true
@@ -77,5 +77,53 @@ const checkIfUserExists = async (email, username) => {
 	}
 }
 
+/**
+ * Asynchronously checks if a user exists in the database based on their id
+ * @param {string} userId - The uuid of the user to check for.
+ * @returns {number} Returns 1 if the user is found and is active, otherwise it returns:
+ *                    -  -1 if there was a database error
+ *                    -  -2 if parameter userID is missing
+ *                    -   0 if user was not found with the userId
+ *                    -   2 it the user is found but has not completed registration
+ *                    -   3 if the user is found but was banned
+ */
+const isUserActive = async (userId) => {
+
+	const USER_NOT_FOUND = 0
+	const VALID_USER = 1
+	const TEMP_USER = 2
+	const BANNED_USER = 3
+	const DATABASE_ERROR = -1
+	const NO_PARAM_SENT = -2
+
+	// Check if userId argument is present
+	if (!userId) {
+		return NO_PARAM_SENT
+	}
+
+	try {
+		// Find user with the received userId
+		const user = await User.findById(userId)
+		
+		if (!user) { // If no user is found
+			return USER_NOT_FOUND
+		} else { // If user is found
+			if (user.status == USERSTATUS_CODES.PERMANENT) {
+				return VALID_USER
+			} else if (user.status == USERSTATUS_CODES.BANNED) {
+				return BANNED_USER
+			} else {
+				return TEMP_USER
+			}
+		}
+	} catch (error) {
+		// Log the error and return database error
+		console.log(error)
+		logger.error(error)
+		return DATABASE_ERROR
+	}
+}
+
+module.exports.isUserActive = isUserActive
 module.exports.checkIfUserExists = checkIfUserExists
 module.exports.connectToDatabase = connectToDatabase

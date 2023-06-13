@@ -18,4 +18,4 @@ const connectValidator = Joi.object({
 })
 
 // Export the schemas
-module.exports = { createValidator }
+module.exports = { connectValidator }

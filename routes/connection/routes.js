@@ -5,7 +5,7 @@ const express = require('express')
 const Connection = require('../../db/models/connection/model')
 
 // Validators 
-const { createValidator } = require('./validators')
+const { connectValidator } = require('./validators')
 
 // Helpers
 const { isUserActive } = require('../../helpers/db')
@@ -26,7 +26,7 @@ router.use(checkJwt)
 router.post('/create', async (req, res) => {
 
 	// validate the request body
-	const { error } = createValidator.validate(req.body) // validate the request body
+	const { error } = connectValidator.validate(req.body) // validate the request body
 	if (error)
 		return res.status(400).send(error.details[0].message) // send a clear error message if validation fails
 

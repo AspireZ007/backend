@@ -16,7 +16,7 @@ const logger = require('../../helpers/logger')
 // Database
 const User = require('../../db/models/user/model')
 
-const { loginValidator, signupValidator , otpValidator , passwordValidator } = require('./validators')
+const { loginValidator, signupValidator , otpValidator , passwordValidator , usernameValidator} = require('./validators')
 const { generateResponseMessage } = require('../../helpers/response')
 
 // Constants
@@ -27,7 +27,42 @@ const { USERSTATUS_CODES } = require("../../db/models/user/model")
 const router = express.Router()
 
 // TODO: finish these routes
-// router.post('/forgotPassword', authController.forgotPassword)
+router.post('/forgotPassword', async (req, res) => {
+
+	const userId = req.userId
+
+	// overwhelming parameters
+	if(req.body.length > 2){
+		return res.status(400).json(generateResponseMessage("error", "Invalid request"))
+	}
+
+	try{
+		// check if user exists with given id
+		const user = await User.findById(userId)
+
+		if(!user){
+			return res.status(400).json(generateResponseMessage("error", "User does not exist"))
+		}
+
+		// fetch old password from database
+		const hashedOldPassword = await User.findById(userId).select('password')
+		req.body.oldPassword = hashedOldPassword
+
+		const resetPasswordReq = {
+			...req,
+			url: '/resetPassword',
+			method: 'PUT',
+			body: req.body,
+		};
+	  
+		// Handle the resetPassword route internally
+		req.app.handle(resetPasswordReq, res);
+	}
+	catch(error){
+		logger.error(error)
+		res.status(400).json(generateResponseMessage("error", error.message))
+	}
+})
 
 
 /**
@@ -108,7 +143,40 @@ router.put('/resetPassword', async(req, res) => {
 	}
 })
 
-// router.post('/usernameAvailable', authController.isUsernameAvailable)
+
+/**
+ * Route to check if username is already in use or not
+ * @param {Object} req - The HTTP request object.
+ * @param {Object} res - The HTTP response object.
+ */
+router.post('/usernameAvailable', async (req, res) => {
+
+	// fetch username from request body
+	const {username} = req.body
+
+	// validate username
+	const {error} = usernameValidator.validate({username})
+
+	if (error) {
+		return res.status(400).json(generateResponseMessage("error", error.details[0].message))
+	}
+
+	try {
+
+		// check if user exists with given username
+		const user = await User.findOne({username})
+
+		if (user) {
+			return res.json(generateResponseMessage("error", "Username already taken"))
+		}
+
+		res.json(generateResponseMessage("success", "Username available"))
+	}
+	catch (error) {
+		logger.error(error)
+		res.status(400).json(generateResponseMessage("error", error.message))
+	}
+})
 
 /**
  * Route to verify otp received upon signing up

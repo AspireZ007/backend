@@ -138,5 +138,9 @@ const passwordValidator = Joi.object({
   password: passwordSchema
 })
 
+const usernameValidator = Joi.object({
+  username: usernameSchema
+})
+
 // Export the schemas
-module.exports = { loginValidator, signupValidator , otpValidator , passwordValidator }
+module.exports = { loginValidator, signupValidator , otpValidator , passwordValidator , usernameValidator }

@@ -9,6 +9,7 @@ const jwt = require("jsonwebtoken")
 const { sendVerificationEmail, getRandomString } = require('../../helpers/email')
 const { checkIfUserExists } = require('../../helpers/db')
 const { hashPassword } = require('../../helpers/password')
+const { checkJwt } = require('../../helpers/jwt')
 
 // Logger
 const logger = require('../../helpers/logger')
@@ -29,11 +30,26 @@ const router = express.Router()
 // TODO: finish these routes
 router.post('/forgotPassword', async (req, res) => {
 
-	const userId = req.userId
-
 	// overwhelming parameters
-	if(req.body.length > 2){
+
+	if(req.body.length > 3){
 		return res.status(400).json(generateResponseMessage("error", "Invalid request"))
+	}
+
+	const{userId , newPassword , confirmNewPassword} = req.body
+
+	if(!newPassword || !confirmNewPassword){
+		return res.status(400).json(generateResponseMessage("error", "All fields are required"))
+	}
+
+	if(newPassword !== confirmNewPassword){
+		return res.status(400).json(generateResponseMessage("error", "Passwords do not match"))
+	}
+
+	const newPasswordError = passwordValidator.validate({password: newPassword})
+
+	if(newPasswordError){
+		return res.status(400).json(generateResponseMessage("error", "New password : " + error.details[0].message))
 	}
 
 	try{
@@ -44,19 +60,12 @@ router.post('/forgotPassword', async (req, res) => {
 			return res.status(400).json(generateResponseMessage("error", "User does not exist"))
 		}
 
-		// fetch old password from database
-		const hashedOldPassword = await User.findById(userId).select('password')
-		req.body.oldPassword = hashedOldPassword
+		const newHashedPassword = await hashPassword(newPassword)
+		user.password = newHashedPassword
 
-		const resetPasswordReq = {
-			...req,
-			url: '/resetPassword',
-			method: 'PUT',
-			body: req.body,
-		};
-	  
-		// Handle the resetPassword route internally
-		req.app.handle(resetPasswordReq, res);
+		await user.save()
+		res.status(200).json(generateResponseMessage("success", "Password changed successfully"))
+
 	}
 	catch(error){
 		logger.error(error)
@@ -71,8 +80,8 @@ router.post('/forgotPassword', async (req, res) => {
  * @param {Object} req - The HTTP request object.
  * @param {Object} res - The HTTP response object.
  */
-router.put('/resetPassword', async(req, res) => {
-	const {oldPassword, newPassword , confirmNewPaswword } = req.body
+router.put('/resetPassword', checkJwt, async(req, res) => {
+	const {oldPassword, newPassword , confirmNewPassword } = req.body
 
 	// overwhelming parameters
 	if(req.body.length > 3){
@@ -80,7 +89,7 @@ router.put('/resetPassword', async(req, res) => {
 	}
 
 	// check if all parameters are present
-	if(!oldPassword || !newPassword || !confirmNewPaswword){
+	if(!oldPassword || !newPassword || !confirmNewPassword){
 		return res.status(400).json(generateResponseMessage("error", "All fields are required"))
 	}
 
@@ -90,12 +99,12 @@ router.put('/resetPassword', async(req, res) => {
 	}
 
 	// check if new password and confirm new password are same
-	if(newPassword !== confirmNewPaswword){
+	if(newPassword !== confirmNewPassword){
 		return res.status(400).json(generateResponseMessage("error", "Passwords do not match"))
 	}
 
 	// remove confirm new password from request body
-	delete req.body.confirmNewPaswword
+	delete req.body.confirmNewPassword
 
 	// validate old password
 	const {oldPasswordError} = passwordValidator.validate({password: oldPassword})
@@ -254,7 +263,7 @@ router.post("/login", async (req, res) => {
 		}
 
 		// Check the current status of the user
-		if (!user.status != USERSTATUS_CODES.PERMANENT) {
+		if (user.status !== USERSTATUS_CODES.PERMANENT) {
 			return res.status(400).json({ message: 'Login Prohibited' })
 		}
 

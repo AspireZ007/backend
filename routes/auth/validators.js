@@ -91,13 +91,13 @@ const collegeSchema = Joi.string()
 	.min(2)
 	.max(255)
 	.required()
-	.regex(/^[a-zA-Z0-9]*$/)
+	.regex(/^[a-zA-Z0-9\s.,!?]+$/)
 	.messages({
 		'string.base': 'College should be a string.',
 		'string.empty': 'College cannot be empty.',
-		'string.pattern.base': 'College should only contain alphanumeric characters.',
 		'string.min': 'College should have a minimum length of 2 characters.',
-		'string.max': 'College should have a maximum length of 255 characters.'
+		'string.max': 'College should have a maximum length of 255 characters.',
+		'string.pattern.base': 'College should only contain alphanumeric characters, punctuation, and whitespace.'
 	})
 
 
@@ -134,13 +134,29 @@ const otpValidator = Joi.object({
 	otp: otpSchema
 })
 
-const passwordValidator = Joi.object({
+const resetValidator = Joi.object({
 	password: passwordSchema
 })
 
-const usernameValidator = Joi.object({
+const usernameAvailableValidator = Joi.object({
 	username: usernameSchema
 })
 
+const forgotPasswordValidator = Joi.object({
+	email : emailSchema
+})
+
+const resetPasswordValidator = Joi.object({
+	newPassword : passwordSchema
+})
+
 // Export the schemas
-module.exports = { loginValidator, signupValidator, otpValidator, passwordValidator, usernameValidator }
+module.exports = { 
+	loginValidator,
+	signupValidator,
+	otpValidator,
+	resetValidator,
+	usernameAvailableValidator,
+	forgotPasswordValidator, 
+	resetPasswordValidator
+}

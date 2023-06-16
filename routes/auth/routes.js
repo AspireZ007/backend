@@ -5,170 +5,264 @@ const express = require('express')
 const jwt = require("jsonwebtoken")
 
 // Helpers
-const { sendVerificationEmail, getRandomString } = require('../../helpers/email')
+const { sendVerificationEmail, getRandomString, sendPasswordResetEmail } = require('../../helpers/email')
 const { checkIfUserExists } = require('../../helpers/db')
 const { hashPassword } = require('../../helpers/password')
-const { checkJwt } = require('../../helpers/jwt')
-
-// Logger
 const logger = require('../../helpers/logger')
+const { generateResponseMessage } = require('../../helpers/response')
 
 // Database
 const User = require('../../db/models/user/model')
-const { loginValidator, signupValidator, otpValidator, passwordValidator, usernameValidator } = require('./validators')
-
-
-const { generateResponseMessage } = require('../../helpers/response')
-
-// Constants
-
 const { USERSTATUS_CODES } = require("../../db/models/user/model")
+const { loginValidator, signupValidator, otpValidator, usernameAvailableValidator, forgotPasswordValidator, resetPasswordValidator } = require('./validators')
 
 // Instantiating the router object
 const router = express.Router()
 
-// TODO: finish these routes
+/** Route to check if a username is available
+ * @swagger
+ * /auth/forgotPassword:
+ *   post:
+ *     summary: Check if a username is available
+ *     tags:
+ *       - auth
+ *     description: Send a password reset email to a user with a randomly generated password reset link
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: abcde@efg.com
+ *                 required: true
+ *                 description: Email of the user to send the password reset email to
+ *     responses:
+ *       200:
+ *         description: Email sent successfully with reset link to frontend redirection.
+ *         content:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   description: success or error
+ *                   example: success
+ *                 data:
+ *                   type: string
+ *                   description: confirmation message in case of "status" success
+ *                   example: Username Available
+ *                   required: false
+ *                 error:
+ *                   type: string
+ *                   description: error message in case of "status" error
+ *                   required: false
+ *       400:
+ *         description: Parameters validation failed
+ *       404:
+ *         description: No user exists with the given email
+ *       500:
+ *         description: Internal server error while sending email or contacting db
+ */
 router.post('/forgotPassword', async (req, res) => {
 
-	// overwhelming parameters
+	// validate the request body
+	const { error } = forgotPasswordValidator.validate(req.body)
+	if (error)
+		return res.status(400).json(generateResponseMessage("error", error))
 
-	if (req.body.length > 3) {
-		return res.status(400).json(generateResponseMessage("error", "Invalid request"))
-	}
-
-	const { userId, newPassword, confirmNewPassword } = req.body
-
-	if (!newPassword || !confirmNewPassword) {
-		return res.status(400).json(generateResponseMessage("error", "All fields are required"))
-	}
-
-	if (newPassword !== confirmNewPassword) {
-		return res.status(400).json(generateResponseMessage("error", "Passwords do not match"))
-	}
-
-	const newPasswordError = passwordValidator.validate({ password: newPassword })
-
-	if (newPasswordError) {
-		return res.status(400).json(generateResponseMessage("error", "New password : " + error.details[0].message))
-	}
+	// body params
+	const { email } = req.body
 
 	try {
-		// check if user exists with given id
-		const user = await User.findById(userId)
 
-		if (!user) {
-			return res.status(400).json(generateResponseMessage("error", "User does not exist"))
+		// check if user exists by email
+		const userDBObject = await User.findOne({ email })
+
+		if (!userDBObject) { // user does not exist
+			return res.status(404).json(generateResponseMessage("error", "No user exists with this email."))
+		} else {
+			const randomString = getRandomString()
+
+			// update the user record
+			userDBObject.otp = randomString
+
+			// save the user record
+			await userDBObject.save()
+
+			// attempt to sent email with reset link
+			const resetPasswordEmailSentStatus = await sendPasswordResetEmail(randomString, email)
+			if (resetPasswordEmailSentStatus == 1) {
+				logger.info("success", `Email sent, user needs to reset password using link in ${email} with OTP ${otp}`)
+				return res.status(200).json(generateResponseMessage("success", `Email sent, user needs to reset password using link in ${email}`))
+			} else {
+				return res.status(500).json(generateResponseMessage("error", `unable to send email to: ${email}`))
+			}
 		}
-
-		const newHashedPassword = await hashPassword(newPassword)
-		user.password = newHashedPassword
-
-		await user.save()
-		res.status(200).json(generateResponseMessage("success", "Password changed successfully"))
-
-	}
-	catch (error) {
-		logger.error(error)
-		res.status(400).json(generateResponseMessage("error", error.message))
+	} catch (err) {
+		// if errors exist while fetching database
+		logger.error(err)
+		return res.status(500).json(generateResponseMessage("error", err))
 	}
 })
 
-
-/**
- * Route to reset user's password
- *
- * @param {Object} req - The HTTP request object.
- * @param {Object} res - The HTTP response object.
+/** Route to reset the password of a user through, resetOtp recieved via email
+ * @swagger
+ * /auth/resetpassword/{otp}:
+ *   put:
+ *     summary: To update existing password with a new one
+ *     tags:
+ *       - auth
+ *     description: Verify the otp recieved through email and make user permanent
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               newPassword:
+ *                 type: string
+ *                 example: def456DEF$%^
+ *                 required: true
+ *                 description: new password of the user to be set to.
+ *     parameters:
+ *       - name: otp
+ *         in: path
+ *         description: otp recieved through email for /auth/forgotpassword route
+ *         required: true
+ *         example: LL3bFTYDdR324DDLIjQn
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Password updation success.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   description: success or error
+ *                   example: success
+ *                 data:
+ *                   type: string
+ *                   description: confirmation message in case of "status" success
+ *                   example: otp verification success, user can now login
+ *                   required: false
+ *                 error:
+ *                   type: string
+ *                   description: error message in case of "status" error
+ *                   required: false
+ *       400:
+ *         description: Invalid request parameters in URL or in body
+ *       500:
+ *         description: Server error in contacting database
+ *       404:
+ *         description: No user found with this OTP, invalid or expired
  */
-router.put('/resetPassword', checkJwt, async (req, res) => {
-	const { oldPassword, newPassword, confirmNewPassword } = req.body
+router.put('/resetpassword/:otp', async (req, res) => {
 
-	// overwhelming parameters
-	if (req.body.length > 3) {
-		return res.status(400).json(generateResponseMessage("error", "Invalid request"))
-	}
+	// validate the request body
+	const { error } = resetPasswordValidator.validate(req.body)
+	if (error)
+		return res.status(400).json(generateResponseMessage("error", error))
 
-	// check if all parameters are present
-	if (!oldPassword || !newPassword || !confirmNewPassword) {
-		return res.status(400).json(generateResponseMessage("error", "All fields are required"))
-	}
+	// validate the request params
+	const { r_error } = otpValidator.validate(req.params)
+	if (r_error)
+		return res.status(400).json(generateResponseMessage("error", r_error))
 
-	// check if old password is same as new password
-	if (oldPassword === newPassword) {
-		return res.status(400).json(generateResponseMessage("error", "New password cannot be same as old password"))
-	}
-
-	// check if new password and confirm new password are same
-	if (newPassword !== confirmNewPassword) {
-		return res.status(400).json(generateResponseMessage("error", "Passwords do not match"))
-	}
-
-	// remove confirm new password from request body
-	delete req.body.confirmNewPassword
-
-	// validate old password
-	const { oldPasswordError } = passwordValidator.validate({ password: oldPassword })
-	if (oldPasswordError) {
-		return res.status(400).json(generateResponseMessage("error", "Old password : " + error.details[0].message))
-	}
-
-	// validate new password
-	const { newPasswordError } = passwordValidator.validate({ password: newPassword })
-	if (newPasswordError) {
-		return res.status(400).json(generateResponseMessage("error", "New password : " + error.details[0].message))
-	}
-
-	const userId = req.userId
+	const { newPassword } = req.body
+	const { otp } = req.params
 
 	try {
-		// check if user exists with given id
-		const user = await User.findById(userId)
-
+		//check if OTP is valid and does exist in our database
+		const user = await User.findOne({ resetOtp: otp, status: USERSTATUS_CODES.PERMANENT })
 		if (!user) {
-			return res.status(400).json(generateResponseMessage("error", "User does not exist"))
+			return res.status(404).json(generateResponseMessage("error", "No user found with this resetOtp."))
 		}
 
-		// check if old password is correct
-		const isMatch = await bcrypt.compare(oldPassword, user.password)
+		//change user status to permanent from temporary
+		user.status = USERSTATUS_CODES.PERMANENT
+		
+		// has the new password
+		const hashedPassword = await hashPassword(password)
 
-		if (!isMatch) {
-			return res.status(400).json(generateResponseMessage("error", "Old password is incorrect"))
-		}
-
-		// hash the new password
-		const hashedPassword = await hashPassword(newPassword)
-
-		// update the user record
+		// update the user object
+		user.resetOtp = null
 		user.password = hashedPassword
 
-		// save the user record
+		//update the user record
 		await user.save()
-
-		res.status(200).json(generateResponseMessage("success", "Password changed successfully"))
+		res.status(200).json(generateResponseMessage("success", "User password updated Successfully"))
 	}
 	catch (error) {
 		logger.error(error)
-		res.status(400).json(generateResponseMessage("error", error.message))
+		res.status(500).json(generateResponseMessage("error", error))
 	}
 })
 
-
-/**
- * Route to check if username is already in use or not
- * @param {Object} req - The HTTP request object.
- * @param {Object} res - The HTTP response object.
+/** Route to check if a username is available
+ * @swagger
+ * /auth/usernameAvailable:
+ *   post:
+ *     summary: Check if a username is available
+ *     tags:
+ *       - auth
+ *     description: Verify if the username is available 
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 required: true
+ *                 example: JohnDoe
+ *     responses:
+ *       200:
+ *         description: Username is available
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   description: success or error
+ *                   example: success
+ *                 data:
+ *                   type: string
+ *                   description: confirmation message in case of "status" success
+ *                   example: Username Available
+ *                   required: false
+ *                 error:
+ *                   type: string
+ *                   description: error message in case of "status" error
+ *                   required: false
+ *       400:
+ *         description: Invalid body parameters
+ *       500:
+ *         description: Server error in contacting database
+ *       409:
+ *         description: Username is unavailable
  */
 router.post('/usernameAvailable', async (req, res) => {
 
-	// fetch username from request body
+	// validate the request body
+	const { error } = usernameAvailableValidator.validate(req.params)
+	if (error)
+		return res.status(400).json(generateResponseMessage("error", error))
+
+	// extract username
 	const { username } = req.body
-
-	// validate username
-	const { error } = usernameValidator.validate({ username })
-
-	if (error) {
-		return res.status(400).json(generateResponseMessage("error", error.details[0].message))
-	}
 
 	try {
 
@@ -176,41 +270,76 @@ router.post('/usernameAvailable', async (req, res) => {
 		const user = await User.findOne({ username })
 
 		if (user) {
-			return res.status(200).json(generateResponseMessage("error", "Username already taken"))
+			return res.status(409).json(generateResponseMessage("error", "Username already taken"))
 		}
 
 		res.status(200).json(generateResponseMessage("success", "Username available"))
 	}
 	catch (error) {
 		logger.error(error)
-		res.status(400).json(generateResponseMessage("error", error.message))
+		res.status(500).json(generateResponseMessage("error", error.message))
 	}
 })
 
-/**
- * Route to verify otp received upon signing up
- *
- * @param {Object} req - The HTTP request object.
- * @param {Object} res - The HTTP response object.
+/** Route to validate a registration through otp link in email
+ * @swagger
+ * /auth/verify/{otp}:
+ *   get:
+ *     summary: Verify a temporary user, via email OTP
+ *     tags:
+ *       - auth
+ *     description: Verify the otp recieved through email and make user permanent
+ *     parameters:
+ *       - name: otp
+ *         in: path
+ *         description: The otp of the forgot password case
+ *         required: true
+ *         example: LL3bFTYDdR324DDLIjQn
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Registration successful, confirmation email sent to email address
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   description: success or error
+ *                   example: success
+ *                 data:
+ *                   type: string
+ *                   description: confirmation message in case of "status" success
+ *                   example: otp verification success, user can now login
+ *                   required: false
+ *                 error:
+ *                   type: string
+ *                   description: error message in case of "status" error
+ *                   required: false
+ *       400:
+ *         description: Invalid request parameters in URL
+ *       500:
+ *         description: Server error in contacting database
+ *       404:
+ *         description: No user found with this OTP, invalid or expired
  */
-router.post('/verify/:otp', async (req, res) => {
+router.get('/verify/:otp', async (req, res) => {
+
+	// validate the request body
+	const { error } = otpValidator.validate(req.params)
+	if (error)
+		return res.status(400).json(generateResponseMessage("error", error))
 
 	// extract otp
-	const otp = req.params.otp
+	const { otp } = req.params
 
-	//validate otp
-	const { error } = otpValidator.validate({ otp: otp })
-
-	if (error) {
-		return res.status(400).json(generateResponseMessage("error", error.details[0].message))
-	}
 	try {
 		//check if OTP is valid and does exist in our database
-		const user = await User.findOne({ otp }, {
-			status: 1, otp: 1
-		})
+		const user = await User.findOne({ otp })
 		if (!user) {
-			return res.status(400).json(generateResponseMessage("error", "Invalid OTP"))
+			return res.status(404).json(generateResponseMessage("error", "No user with such OTP found."))
 		}
 
 		//change user status to permanent from temporary
@@ -225,7 +354,7 @@ router.post('/verify/:otp', async (req, res) => {
 	}
 	catch (error) {
 		logger.error(error)
-		res.status(400).json(generateResponseMessage("error", error.message))
+		res.status(500).json(generateResponseMessage("error", error))
 	}
 })
 
@@ -283,7 +412,7 @@ router.post("/login", async (req, res) => {
 	// validate the request body
 	const { error } = loginValidator.validate(req.body)
 	if (error)
-		return res.status(400).send(error.details[0].message)
+		return res.status(400).send(error)
 
 	// body params
 	const { email, password } = req.body
@@ -321,7 +450,7 @@ router.post("/login", async (req, res) => {
 			email: userDBObject.email,
 			username: userDBObject.username,
 			loginTime: new Date().toString()
-		};
+		}
 		const token = jwt.sign(tokenPayload, process.env.SECRET_KEY, {
 			expiresIn: process.env.TOKEN_TIMEOUT
 		})
@@ -423,7 +552,7 @@ router.post("/signup", async (req, res) => {
 	// validate the request body
 	const { error } = signupValidator.validate(req.body)
 	if (error)
-		return res.status(400).json(generateResponseMessage("error", error.details[0].message))
+		return res.status(400).json(generateResponseMessage("error", error))
 
 	// body params
 	const { firstname, lastname, email, password, phone, username, college } = req.body
@@ -470,8 +599,8 @@ router.post("/signup", async (req, res) => {
 		newUser.save()
 
 		// Send an OTP verification email to the new user's email address
-		console.log(`sending ${email} to sendVerificationEmail with otp ${randomString}`)
-		logger.log(`sending ${email} to sendVerificationEmail with otp ${randomString}`)
+		// console.log("sending " + email + " to sendVerificationEmail with otp " + randomString)
+		// logger.log("sending " + email + " to sendVerificationEmail with otp " + randomString)
 		const verificationEmailSentStatus = await sendVerificationEmail(randomString, email)
 		if (verificationEmailSentStatus == 1) {
 			return res.status(200).json(generateResponseMessage("success", `Email sent, user needs to check mail in ${email}`))
@@ -484,6 +613,5 @@ router.post("/signup", async (req, res) => {
 		return res.status(500).json(generateResponseMessage("error", error))
 	}
 })
-
 
 module.exports = router

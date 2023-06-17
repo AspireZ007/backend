@@ -103,7 +103,7 @@ const isUserActive = async (userId) => {
 
 	try {
 		// Find user with the received userId
-		const user = await User.findById(userId)
+		const user = await User.findOne({ _id: userId })
 		
 		if (!user) { // If no user is found
 			return USER_NOT_FOUND

@@ -194,7 +194,7 @@ router.put('/resetpassword/:otp', async (req, res) => {
 		const hashedPassword = await hashPassword(password)
 
 		// update the user object
-		user.resetOtp = null
+		user.resetOtp = undefined
 		user.password = hashedPassword
 
 		//update the user record
@@ -345,8 +345,8 @@ router.get('/verify/:otp', async (req, res) => {
 		//change user status to permanent from temporary
 		user.status = USERSTATUS_CODES.PERMANENT
 
-		//nullify otp as we have no use of it further
-		user.otp = null
+		//remove otp as we have no use of it further
+		user.otp = undefined
 
 		//update the user record
 		await user.save()
@@ -438,13 +438,13 @@ router.post("/login", async (req, res) => {
 		}
 
 		// if user is temporary
-		if (userDBObject.status !== USERSTATUS_CODES.TEMPORARY) {
+		if (userDBObject.status === USERSTATUS_CODES.TEMPORARY) {
 			return res.status(406).json({ message: 'User login incomplete, request not accepted.' })
 		}
 
 		// issue token
 		const tokenPayload = {
-			_id: userDBObject._id,
+			id: userDBObject.id,
 			firstname: userDBObject.firstname,
 			lastname: userDBObject.lastname,
 			email: userDBObject.email,

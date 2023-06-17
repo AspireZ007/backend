@@ -12,6 +12,7 @@ const USERROLE_CODES = {
 };
 
 const userSchema = new mongoose.Schema({
+
   firstname: 				{ type: String, required: true },
   lastname: 				{ type: String, required: true },
   email: 						{ type: String, required: true, unique: true },
@@ -19,6 +20,7 @@ const userSchema = new mongoose.Schema({
   phone: 						{ type: String, required: true },
   username: 				{ type: String, required: true, unique: true },
   college: 					{ type: String, required: true },
+	profilepic:				{ type: String, unique: true, default: "" },
 
   interests: 				{ type: [String], required: true, default: [] },
 	
@@ -29,6 +31,16 @@ const userSchema = new mongoose.Schema({
 	resetOtp: 				{ type: String },
 	
   createdAt: 				{ type: Date, required: true, default: Date.now },
+});
+
+userSchema.method('transform', function() {
+	var obj = this.toObject();
+
+	//Rename fields
+	obj.id = obj._id;
+	delete obj._id;
+
+	return obj;
 });
 
 const User = mongoose.model("users", userSchema);

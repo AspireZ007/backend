@@ -13,9 +13,9 @@ const idSchema = Joi.string()
 	})
 
 // Define the schema for signup
-const connectValidator = Joi.object({
-	followingId: idSchema
+const idValidator = Joi.object({
+	id: idSchema
 })
 
 // Export the schemas
-module.exports = { connectValidator }
+module.exports = { idValidator }

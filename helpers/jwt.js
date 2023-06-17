@@ -1,6 +1,7 @@
 require("dotenv").config();
 const jwt = require('jsonwebtoken');
 const { generateResponseMessage } = require("./response");
+const logger = require("./logger");
 
 /**
  * Express middleware that checks for the validity of a JWT token and returns the user role.
@@ -21,11 +22,12 @@ const checkJwt = (req, res, next) => {
 
   try {
     // Verify the JWT token
-    const { _id } = jwt.verify(token, process.env.SECRET_KEY)
-    req.userId = _id
+    const tokenDecoded = jwt.verify(token, process.env.SECRET_KEY)
+    req.userId = tokenDecoded.id
     return next()
   } catch (err) {
     console.error(err)
+		logger.error(err)
     return res.status(401).json(generateResponseMessage("error", err))
   }
 }

@@ -26,8 +26,6 @@ const TRANSPORTER = nodemailer.createTransport({
  */
 const sendPasswordResetEmail = async (otp, receiverEmailString) => {
 
-	console.log({receiverEmailString})
-
 	// Create a nodemailer transporter using SMTP configuration
 	
 
@@ -69,8 +67,6 @@ const sendPasswordResetEmail = async (otp, receiverEmailString) => {
  * @returns {Promise<number>} A Promise that resolves with 1 if the email is sent successfully, otherwise -1.
  */
 const sendVerificationEmail = async (otp, receiverEmailString) => {
-
-	console.log({receiverEmailString})
 
 	// Create a nodemailer transporter using SMTP configuration
 	const transporter = nodemailer.createTransport({

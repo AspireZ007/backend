@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+const mongoose = require("mongoose")
 
 const USERSTATUS_CODES = {
   TEMPORARY: 0,
@@ -31,20 +31,10 @@ const userSchema = new mongoose.Schema({
 	resetOtp: 				{ type: String },
 	
   createdAt: 				{ type: Date, required: true, default: Date.now },
-});
+})
 
-userSchema.method('transform', function() {
-	var obj = this.toObject();
+const User = mongoose.model("users", userSchema)
 
-	//Rename fields
-	obj.id = obj._id;
-	delete obj._id;
-
-	return obj;
-});
-
-const User = mongoose.model("users", userSchema);
-
-module.exports = User;
+module.exports = User
 module.exports.USERSTATUS_CODES = USERSTATUS_CODES;
 module.exports.USERROLE_CODES = USERROLE_CODES;

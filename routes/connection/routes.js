@@ -31,43 +31,25 @@ router.use(checkJwt)
  */
 const _getFolloweesById = async (followerId) => {
 	try {
-		// Find followees matcheing followerId
+
 		const followees = await Connection.find({ follower: followerId, isBlocked: CONNECTIONSTATUS_CODES.ALLOWED }, 'following')
 			.populate({
-				path: 'following',
-				select: 'username firstname lastname profilepic'
+				path: 'following',																	// populate the reference
+				select: 'username firstname lastname profilepic',		// select only what we need
+				transform: (doc, id) => { 													// replace _id with id
+					if (doc == null) {
+						return id
+					} else {
+						const ret = { ...doc._doc }
+						ret.id = ret._id
+						delete ret._id
+						return ret
+					}
+				}
 			})
 
 		const responseObj = followees.map((connectionObject => connectionObject.following))
 		return responseObj
-	} catch (err) {
-		console.log(err)
-		logger.error(err)
-		// Return nothing if an error occurs
-		return
-	}
-}
-
-/** Retrieves a list of followers for a given followee ID.
- * @async
- * @function
- * @name _getFollowersById
- * @param {string} followeeId - The ID of the followee to retrieve followers for.
- * @returns {Promise<Array>} - A promise that resolves to an array of follower documents or undefined in case of error.
- */
-const _getFollowersById = async (followeeId) => {
-	try {
-		// Find followers matcheing followeeId
-		const followers = await Connection.find({ following: followeeId, isBlocked: CONNECTIONSTATUS_CODES.ALLOWED }, 'follower')
-			// populate followers actual data
-			.populate({
-				path: 'follower',
-				select: 'id username firstname lastname profilepic'
-			})
-
-		// TODO: cleanup followers
-		console.log(followers)
-		return followers
 	} catch (err) {
 		console.log(err)
 		logger.error(err)
@@ -134,7 +116,9 @@ const _getFollowersById = async (followeeId) => {
  *       403:
  *         description: The user cannot be followed, does not exist, is temporary or banned
  *       409:
- *         description: The user is already following this user. 
+ *         description: The user is already following this user
+ *       412:
+ *         description: pre-condition failed, user cannot follow himself
  */
 router.post('/follow/:id', async (req, res) => {
 
@@ -146,50 +130,55 @@ router.post('/follow/:id', async (req, res) => {
 		return res.status(400).json(obj)
 	}
 
-	// extract otp
+	// extract path
 	const { id } = req.params
 
 	// extract the requester id
 	const userId = req.userId // from the middleware checkJWT
+
+	if (id.trim() === userId.trim()) {
+		return res.status(403).json(generateResponseMessage("error", "User cannot follow himself."))
+	}
+
 	try {
 		// check if followee id is a valid user
-		const isUserActiveStatus = await isUserActive(userId)
-		console.log({isUserActiveStatus})
+		const isUserActiveStatus = await isUserActive(id)
+		console.log({ isUserActiveStatus })
 		if (isUserActiveStatus !== 1) {
 			const outputString = "The asker's account is " +
 				((isUserActiveStatus == -1) ? "throwing a db error" :
-				(isUserActiveStatus == -2) ? "not a valid id" :
-					(isUserActiveStatus == 0) ? "not found with this id" :
-						(isUserActiveStatus == 2) ? "is only temporarily registered" :
-							(isUserActiveStatus == 3) ? "is banned" : `!! returning ${isUserActiveStatus}`)
+					(isUserActiveStatus == -2) ? "not a valid id" :
+						(isUserActiveStatus == 0) ? "not found with this id" :
+							(isUserActiveStatus == 2) ? "is only temporarily registered" :
+								(isUserActiveStatus == 3) ? "is banned" : `!! returning ${isUserActiveStatus}`)
 			return res.status(403).json(generateResponseMessage("error", outputString))
 		}
 
-		// create the connection
-		const connection = await Connection.create({ follower: id, following: userId })
+		// create the connection if it does not exist
+		const updateOneStatus = await Connection.updateOne(
+			{ follower: id, following: userId, isUnfollowed: CONNECTIONSTATUS_CODES.ALLOWED, isBlocked: CONNECTIONSTATUS_CODES.ALLOWED },
+			{ $set: { follower: id, following: userId } },
+			{ upsert: true })
 
 		// get all followees for the user
 		const followees = await _getFolloweesById(id)
-		console.log({followees})
+
 		if (followees) {
-			// return updated followees as a success response
-			res.status(200).json(generateResponseMessage("success", followees))
+			if (updateOneStatus.upsertedCount == 0) {
+				return res.status(409).json(generateResponseMessage("error", followees))
+			} else {
+				// return updated followees as a success response
+				res.status(200).json(generateResponseMessage("success", followees))
+			}
 		} else {
 			res.status(204).json(generateResponseMessage("success", "Request was successful but no data returned"))
 		}
 	} catch (err) {
-		if (err.code === 11000) { // checking for unique constraint violation
-			logger.error(err)
-			return res.status(409).json(generateResponseMessage("error", "Already following"))
-		} else {
-			logger.error(err)
-			console.error(err) // prints any other type of error
-			return res.status(500).json(generateResponseMessage("error", err))
-		}
+		logger.error(err)
+		console.error(err) // prints any other type of error
+		return res.status(500).json(generateResponseMessage("error", err))
 	}
 })
-
-
 
 // // unfollow endpoint
 // app.post('/users/unfollow/:id', async (req, res) => {

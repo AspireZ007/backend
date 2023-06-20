@@ -22,7 +22,7 @@ const router = express.Router()
 // Middleware to check for valid JWT token in header (authorization)
 router.use(checkJwt)
 
-/** Retrieves a list of followees for a given follower ID.
+/** Helper function, retrieves a list of followees for a given follower ID.
  * @async
  * @function
  * @name _getFolloweesById
@@ -32,7 +32,7 @@ router.use(checkJwt)
 const _getFolloweesById = async (followerId) => {
 	try {
 
-		const followees = await Connection.find({ follower: followerId, isBlocked: CONNECTIONSTATUS_CODES.ALLOWED }, 'following')
+		const followees = await Connection.find({ follower: followerId, isBlocked: CONNECTIONSTATUS_CODES.ALLOWED, isUnfollowed: CONNECTIONSTATUS_CODES.ALLOWED }, 'following')
 			.populate({
 				path: 'following',																	// populate the reference
 				select: 'username firstname lastname profilepic',		// select only what we need
@@ -58,6 +58,148 @@ const _getFolloweesById = async (followerId) => {
 	}
 }
 
+/** Helper function, retrieves a list of followers for a given follower ID.
+ * @async
+ * @function
+ * @name _getFollowersById
+ * @param {string} followeeId - The ID of the follower to retrieve followees for.
+ * @returns {Promise<Array>} - A promise that resolves to an array of followee documents or undefined in case of error.
+ */
+const _getFollowersById = async (followeeId) => {
+	try {
+
+		const followers = await Connection.find({ following: followeeId, isBlocked: CONNECTIONSTATUS_CODES.ALLOWED, isUnfollowed: CONNECTIONSTATUS_CODES.ALLOWED }, 'following')
+			.populate({
+				path: 'follower',																		// populate the reference
+				select: 'username firstname lastname profilepic',		// select only what we need
+				transform: (doc, id) => { 													// replace _id with id
+					if (doc == null) {
+						return id
+					} else {
+						const ret = { ...doc._doc }
+						ret.id = ret._id
+						delete ret._id
+						return ret
+					}
+				}
+			})
+
+		const responseObj = followers.map((connectionObject => connectionObject.follower))
+		return responseObj
+	} catch (err) {
+		console.log(err)
+		logger.error(err)
+		// Return nothing if an error occurs
+		return
+	}
+}
+
+/** Route to get the list of all followers, the people following current user
+ * @swagger
+ * /connection/followers:
+ *   get:
+ *     summary: Request to allow current user to get all people that follow them
+ *     tags:
+ *       - connection
+ *     description: Protected route. Gets the list of all followers, the people following current user
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of followers queries and returned
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   description: success or error
+ *                   example: success
+ *                 data:
+ *                   type: string
+ *                   description: confirmation message in case of "status" success
+ *                   example: [array of followers]
+ *                   required: false
+ *       500:
+ *         description: Server error in contacting database
+ *       204:
+ *         description: Same as 200 but no data returned
+ */
+router.get('/followers', async (req, res) => {
+
+	// get the requester id, extracted by the middleware checkJWT
+	const userId = req.userId
+
+	try {
+		// get all followees for the user
+		const followers = await _getFollowersById(userId)
+
+		if (followers) {
+			res.status(200).json(generateResponseMessage("success", followers))
+		} else {
+			res.status(204).json(generateResponseMessage("success", "Request was successful but no data returned"))
+		}
+	} catch (err) {
+		logger.error(err)
+		console.error(err) // prints any other type of error
+		return res.status(500).json(generateResponseMessage("error", err))
+	}
+})
+
+/** Route to get the list of all followees, the people current user follows
+ * @swagger
+ * /connection/followees:
+ *   get:
+ *     summary: Request to allow current user to get all people they follow
+ *     tags:
+ *       - connection
+ *     description: Protected route. Gets the list of all followees, the people current user follows.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Follow successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   description: success or error
+ *                   example: success
+ *                 data:
+ *                   type: string
+ *                   description: confirmation message in case of "status" success
+ *                   example: [array of followees]
+ *                   required: false
+ *       500:
+ *         description: Server error in contacting database
+ *       204:
+ *         description: Same as 200 but no data returned
+ */
+router.get('/followees', async (req, res) => {
+
+	// get the requester id, extracted by the middleware checkJWT
+	const userId = req.userId
+
+	try {
+		// get all followees for the user
+		const followees = await _getFolloweesById(userId)
+
+		if (followees) {
+			res.status(200).json(generateResponseMessage("success", followees))
+		} else {
+			res.status(204).json(generateResponseMessage("success", "Request was successful but no data returned"))
+		}
+	} catch (err) {
+		logger.error(err)
+		console.error(err) // prints any other type of error
+		return res.status(500).json(generateResponseMessage("error", err))
+	}
+})
+
 /** Route to follow another user.
  * @swagger
  * /connection/follow/{id}:
@@ -73,7 +215,7 @@ const _getFolloweesById = async (followerId) => {
  *         in: path
  *         description: id of the user to be followed
  *         required: true
- *         example: 507f1f77bcf86cd799439011
+ *         example: 648e0f25888c1f49d7184fb5
  *         schema:
  *           type: string
  *     responses:
@@ -137,7 +279,7 @@ router.post('/follow/:id', async (req, res) => {
 	const userId = req.userId // from the middleware checkJWT
 
 	if (id.trim() === userId.trim()) {
-		return res.status(403).json(generateResponseMessage("error", "User cannot follow himself."))
+		return res.status(412).json(generateResponseMessage("error", "User cannot follow himself."))
 	}
 
 	try {
@@ -156,18 +298,18 @@ router.post('/follow/:id', async (req, res) => {
 
 		// create the connection if it does not exist
 		const updateOneStatus = await Connection.updateOne(
-			{ follower: id, following: userId, isUnfollowed: CONNECTIONSTATUS_CODES.ALLOWED, isBlocked: CONNECTIONSTATUS_CODES.ALLOWED },
-			{ $set: { follower: id, following: userId } },
+			{ follower: userId, following: id, isUnfollowed: CONNECTIONSTATUS_CODES.ALLOWED, isBlocked: CONNECTIONSTATUS_CODES.ALLOWED },
+			{ $set: { follower: userId, following: id } },
 			{ upsert: true })
 
 		// get all followees for the user
-		const followees = await _getFolloweesById(id)
+		const followees = await _getFolloweesById(userId)
 
 		if (followees) {
-			if (updateOneStatus.upsertedCount == 0) {
+			if (updateOneStatus.upsertedCount == 0) { // case where user is already following
 				return res.status(409).json(generateResponseMessage("error", followees))
 			} else {
-				// return updated followees as a success response
+				// rcase where user 
 				res.status(200).json(generateResponseMessage("success", followees))
 			}
 		} else {
@@ -180,173 +322,129 @@ router.post('/follow/:id', async (req, res) => {
 	}
 })
 
-// // unfollow endpoint
-// app.post('/users/unfollow/:id', async (req, res) => {
-// 	try {
-// 		const user = await User.findById(req.params.id)
-// 		if (!user) {
-// 			return res.status(404).json({ message: 'User not found' })
-// 		}
-// 		user.followers = user.followers.filter(follower => follower.toString() !== req.body.userId)
-// 		await user.save()
-// 		await Connection.deleteOne({ follower: req.params.id, following: req.body.userId })
-// 		res.json({ message: 'User unfollowed successfully' })
-// 	} catch (err) {
-// 		console.error(err)
-// 		res.status(500).json({ message: 'Server error' })
-// 	}
-// })
+/** Route to unfollow another user.
+ * @swagger
+ * /connection/unfollow/{id}:
+ *   post:
+ *     summary: Request to allow current user to unfollow another by id
+ *     tags:
+ *       - connection
+ *     description: Protected route. If already following, allows user to unfollow another user by id
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         description: id of the user to be unfollowed
+ *         required: true
+ *         example: 648e0f25888c1f49d7184fb5
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Unfollow successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   description: success or error
+ *                   example: success
+ *                 data:
+ *                   type: string
+ *                   description: confirmation message in case of "status" success
+ *                   example: [array of followees]
+ *                   required: false
+ *       204:
+ *         description: Unfollow successful, but no data returned
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   description: success or error
+ *                   example: success
+ *                 data:
+ *                   type: string
+ *                   description: confirmation message in case of "status" success
+ *                   example: "Request was successful but no data returned"
+ *                   required: true
+ *       400:
+ *         description: Invalid request parameters in URL or in body
+ *       500:
+ *         description: Server error in contacting database
+ *       403:
+ *         description: The user cannot be unfollowed, does not exist, is temporary or banned
+ *       424:
+ *         description: The user is not following, so cant unfollow.
+ *       412:
+ *         description: pre-condition failed, user cannot follow himself
+ */
+router.post('/unfollow/:id', async (req, res) => {
 
-// // get followers endpoint
-// app.get('/users/followers/:id', async (req, res) => {
-// 	try {
-// 		const user = await User.findById(req.params.id)
-// 		if (!user) {
-// 			return res.status(404).json({ message: 'User not found' })
-// 		}
-// 		const followers = await User.find({ _id: { $in: user.followers } })
-// 		res.json(followers)
-// 	} catch (err) {
-// 		console.error(err)
-// 		res.status(500).json({ message: 'Server error' })
-// 	}
-// })
+	// validate the request body
+	const { error } = idValidator.validate(req.params)
+	if (error) {
+		const obj = generateResponseMessage("error", error)
+		console.log(obj)
+		return res.status(400).json(obj)
+	}
 
-// // get following endpoint
-// app.get('/users/following/:id', async (req, res) => {
-// 	try {
-// 		const user = await User.findById(req.params.id)
-// 		if (!user) {
-// 			return res.status(404).json({ message: 'User not found' })
-// 		}
-// 		const following = await User.find({ _id: { $in: user.following } })
-// 		res.json(following)
-// 	} catch (err) {
-// 		console.error(err)
-// 		res.status(500).json({ message: 'Server error' })
-// 	}
-// })
+	// extract path
+	const { id } = req.params
 
-// /**
-//  * @param {Object} req - The HTTP request object (contains the follower and followee UUIDs)
-//  * @param {Object} res - The HTTP response object.
-//  */
-// router.post('/create', async (req, res) => {
+	// extract the requester id
+	const userId = req.userId // from the middleware checkJWT
 
-// 	// validate the request body
-// 	const { error } = connectValidator.validate(req.body) // validate the request body
-// 	if (error)
-// 		return res.status(400).send(error.details[0].message) // send a clear error message if validation fails
+	if (id.trim() === userId.trim()) {
+		return res.status(412).json(generateResponseMessage("error", "User cannot unfollow himself."))
+	}
 
-// 	const userId = req.userId // from the middleware checkJWT
-// 	const { followeeId } = req.body
+	try {
+		// check if followee id is a valid user
+		const isUserActiveStatus = await isUserActive(id)
+		console.log({ isUserActiveStatus })
+		if (isUserActiveStatus !== 1) {
+			const outputString = "The asker's account is " +
+				((isUserActiveStatus == -1) ? "throwing a db error" :
+					(isUserActiveStatus == -2) ? "not a valid id" :
+						(isUserActiveStatus == 0) ? "not found with this id" :
+							(isUserActiveStatus == 2) ? "is only temporarily registered" :
+								(isUserActiveStatus == 3) ? "is banned" : `!! returning ${isUserActiveStatus}`)
+			return res.status(403).json(generateResponseMessage("error", outputString))
+		}
 
-// 	if (!followeeId) {
-// 		return res.status(400).json(generateResponseMessage("error", "Missing required parameters"))
-// 	}
+		// check if a valid follow exists
+		const findFollowResults = await Connection.find(
+			{ follower: userId, following: id, isUnfollowed: CONNECTIONSTATUS_CODES.ALLOWED, isBlocked: CONNECTIONSTATUS_CODES.ALLOWED })
+		
+		if (findFollowResults.length === 0) {
+			// not following, so cannot unfollow
+			res.status(424).json(generateResponseMessage("error", `User:${userId} does not follow User:${id}, so cannot unfollow`))
+		} else {
+			const connectionObj = findFollowResults[0]
+			connectionObj.isUnfollowed = CONNECTIONSTATUS_CODES.BLOCKED
+			connectionObj.unfollowedTime = new Date(Date.now())
+			await connectionObj.save()
 
-// 	//check if the follower user exists
-// 	const followerExists = await isUserActive(userId)
+			// get all followees for the user
+			const followees = await _getFolloweesById(userId)
 
-// 	if (followerExists !== 1) {
-// 		const outputString =  "The asker's account is " +
-// 			(followerExists == -1) ? "throwing a db error" :
-// 			(followerExists == -2) ? "not a valid id" :
-// 			(followerExists == 0) ? "not found with this id" :
-// 			(followerExists == 2) ? "is only temporarily registered" :
-// 			(followerExists == 3) ? "is banned" : `!! returning ${followerExists}`
-// 		return res.status(403).json(generateResponseMessage("error", outputString))
-// 	} 
-
-// 	const followeeExists = await isUserActive(followeeId)
-
-// 	if (followeeExists !== 1){
-// 		const outputString =  "The target to follow's account is " +
-// 			(followeeExists == -1) ? "throwing a db error" :
-// 			(followeeExists == -2) ? "not a valid id" :
-// 			(followeeExists == 0) ? "not found with this id" :
-// 			(followeeExists == 2) ? "is only temporarily registered" :
-// 			(followeeExists == 3) ? "is banned" : `!! returning ${followeeExists}`
-// 		return res.status(403).json(generateResponseMessage("error", outputString))
-// 	}
-
-// 	try {
-// 		const existingConnection = await Connection.find({ followee: followeeId, follower: userId })
-
-// 		//check if the connection already exists
-// 		if (existingConnection.length > 0) {
-// 			return res.status(409).json(generateResponseMessage("error", "Connection already exists"))
-// 		}
-
-// 		//completing all the validations and creating the connection
-// 		const connection = new Connection({ followee: followeeId, follower: userId })
-// 		await connection.save()
-// 		return res.status(200).json(generateResponseMessage("success", "Connection created successfully"))
-// 	}
-// 	catch (error) {
-// 		logger.error(error)
-// 		return res.status(500).json(generateResponseMessage("error", error))
-// 	}
-// })
-
-// /**
-//  * @param {Object} req - The HTTP request object (contains the follower and followee UUIDs)
-//  * @param {Object} res - The HTTP response object.
-//  */
-// router.post('/remove', async (req, res) => {
-
-// 	const { error } = connectValidator.validate(req.body) // validate the request body
-// 	if (error)
-// 		return res.status(400).send(error.details[0].message) // send a clear error message if validation fails
-
-// 	const userId = req.userId // from the middleware checkJWT
-// 	const { followeeId } = req.body
-
-// 	//check for the case when null is passed as a parameter
-// 	if (!followeeId) {
-// 		return res.status(400).json(generateResponseMessage("error", "Missing required parameters"))
-// 	}
-
-// 	const followerExists = await isUserActive(userId)
-
-// 	if (followerExists !== 1) {
-// 		const outputString =  "The asker's account is " +
-// 			(followerExists == -1) ? "throwing a db error" :
-// 			(followerExists == -2) ? "not a valid id" :
-// 			(followerExists == 0) ? "not found with this id" :
-// 			(followerExists == 2) ? "is only temporarily registered" :
-// 			(followerExists == 3) ? "is banned" : `!! returning ${followerExists}`
-// 		return res.status(403).json(generateResponseMessage("error", outputString))
-// 	} 
-
-// 	const followeeExists = await isUserActive(followeeId)
-
-// 	if (followeeExists !== 1){
-// 		const outputString =  "The target to follow's account is " +
-// 			(followeeExists == -1) ? "throwing a db error" :
-// 			(followeeExists == -2) ? "not a valid id" :
-// 			(followeeExists == 0) ? "not found with this id" :
-// 			(followeeExists == 2) ? "is only temporarily registered" :
-// 			(followeeExists == 3) ? "is banned" : `!! returning ${followeeExists}`
-// 		return res.status(403).json(generateResponseMessage("error", outputString))
-// 	}
-
-// 	try {
-
-// 		//check if the connection exists or not
-// 		const existingConnection = await Connection.find({ followee: followeeId, follower: userId })
-// 		if (existingConnection.length === 0) {
-// 			return res.status(404).json(generateResponseMessage("error", "Connection does not exist"))
-// 		}
-
-// 		//completing all the validations and deleting the connection
-// 		const deletedConnection = await Connection.deleteOne({ followee: followeeId, follower: userId })
-// 		return res.status(200).json(generateResponseMessage("success", "Connection deleted successfully"))
-// 	}
-// 	catch (error) {
-// 		logger.error(error)
-// 		return res.status(500).json(generateResponseMessage("error", "Internal Server Error"))
-// 	}
-// })
+			if (followees) {
+				res.status(200).json(generateResponseMessage("success", followees))
+			} else {
+				res.status(204).json(generateResponseMessage("success", "Request was successful but no data returned"))
+			}
+		}
+	} catch (err) {
+		logger.error(err)
+		console.error(err) // prints any other type of error
+		return res.status(500).json(generateResponseMessage("error", err))
+	}
+})
 
 module.exports = router

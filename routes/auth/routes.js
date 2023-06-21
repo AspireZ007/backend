@@ -72,7 +72,7 @@ router.post('/forgotPassword', async (req, res) => {
 	// validate the request body
 	const { error } = forgotPasswordValidator.validate(req.body)
 	if (error)
-		return res.status(400).json(generateResponseMessage("error", error))
+		return res.status(400).json({message: error.details[0].message})
 
 	// body params
 	const { email } = req.body
@@ -170,12 +170,12 @@ router.put('/resetpassword/:otp', async (req, res) => {
 	// validate the request body
 	const { error } = resetPasswordValidator.validate(req.body)
 	if (error)
-		return res.status(400).json(generateResponseMessage("error", error))
+		return res.status(400).json({message: error.details[0].message})
 
 	// validate the request params
 	const { r_error } = otpValidator.validate(req.params)
 	if (r_error)
-		return res.status(400).json(generateResponseMessage("error", r_error))
+		return res.status(400).json({message: r_error.details[0].message})
 
 	const { newPassword } = req.body
 	const { otp } = req.params
@@ -259,7 +259,7 @@ router.post('/usernameAvailable', async (req, res) => {
 	// validate the request body
 	const { error } = usernameAvailableValidator.validate(req.params)
 	if (error)
-		return res.status(400).json(generateResponseMessage("error", error))
+		return res.status(400).json({message: error.details[0].message})
 
 	// extract username
 	const { username } = req.body
@@ -330,7 +330,7 @@ router.get('/verify/:otp', async (req, res) => {
 	// validate the request body
 	const { error } = otpValidator.validate(req.params)
 	if (error)
-		return res.status(400).json(generateResponseMessage("error", error))
+		return res.status(400).json({message: error.details[0].message})
 
 	// extract otp
 	const { otp } = req.params
@@ -412,7 +412,7 @@ router.post("/login", async (req, res) => {
 	// validate the request body
 	const { error } = loginValidator.validate(req.body)
 	if (error)
-		return res.status(400).send(error)
+		return res.status(400).json({message: error.details[0].message})
 
 	// body params
 	const { email, password } = req.body
@@ -452,11 +452,11 @@ router.post("/login", async (req, res) => {
 			loginTime: new Date().toString()
 		}
 		const token = jwt.sign(tokenPayload, process.env.SECRET_KEY, {
-			expiresIn: process.env.TOKEN_TIMEOUT
+			expiresIn: Number(process.env.TOKEN_TIMEOUT)
 		})
 
 		// issued
-		res.status(200).json({ token })
+		res.status(200).json({ token , message: 'Login Successful' })
 	} catch (error) {
 		// some error
 		logger.error(error)
@@ -552,7 +552,7 @@ router.post("/signup", async (req, res) => {
 	// validate the request body
 	const { error } = signupValidator.validate(req.body)
 	if (error)
-		return res.status(400).json(generateResponseMessage("error", error))
+		return res.status(400).json({message: error.details[0].message})
 
 	// body params
 	const { firstname, lastname, email, password, phone, username, college } = req.body

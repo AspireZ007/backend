@@ -549,13 +549,17 @@ router.post("/login", async (req, res) => {
  */
 router.post("/signup", async (req, res) => {
 
+	// body params
+	const { name, username, email, college, password, confirmPassword } = req.body
+
+	if(password !== confirmPassword) {
+		return res.status(400).json(generateResponseMessage("error", "passwords do not match"))
+	}
+
 	// validate the request body
 	const { error } = signupValidator.validate(req.body)
 	if (error)
-		return res.status(400).json({message: error.details[0].message})
-
-	// body params
-	const { firstname, lastname, email, password, phone, username, college } = req.body
+		return res.status(400).json(generateResponseMessage("error", error.details[0].message))
 
 	try {
 		// query db if email or username already exists
@@ -592,7 +596,7 @@ router.post("/signup", async (req, res) => {
 		const hashedPassword = await hashPassword(password)
 
 		// Create a new User object with the validated form data and hashed password
-		const newUserObject = { firstname, lastname, email, password: hashedPassword, phone, username, college, otp: randomString }
+		const newUserObject = { name, email, username, password: hashedPassword, college, otp: randomString }
 
 		// Save the new user's data to the database
 		const newUser = new User(newUserObject)

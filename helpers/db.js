@@ -124,6 +124,50 @@ const isUserActive = async (userId) => {
 	}
 }
 
+/**
+ * Asynchronously checks user's role
+ * @param {string} userId - The uuid of the user to check for.
+ * @returns {number} Returns 1 if the user is Admin, otherwise it returns:
+ *                    -  -1 if user is not an admin
+ *                    -  -2 if parameter userID is missing
+ *                    -   0 if user was not found with the userId
+ *                    -   2 it there is a database error
+ */
+const checkUserRole = async (userId) => {
+
+	const NO_PARAM_SENT = -2
+	const REGULAR_USER = -1
+	const USER_NOT_FOUND = 0
+	const ADMIN_USER = 1
+	const DATABASE_ERROR = 2
+
+	// Check if userId argument is present
+	if (!userId) {
+		return NO_PARAM_SENT
+	}
+
+	try {
+		// Find user with the received userId
+		const user = await User.findById(userId)
+
+		if (!user) { 
+			return USER_NOT_FOUND
+		} 
+		else if (user.role == USERROLE_CODES.ADMIN) {
+			return ADMIN_USER
+		} 
+		else {
+			return REGULAR_USER
+		}
+	} catch (error) {
+		// Log the error and return database error
+		logger.error(error)
+		return DATABASE_ERROR
+	}
+}
+
 module.exports.isUserActive = isUserActive
 module.exports.checkIfUserExists = checkIfUserExists
 module.exports.connectToDatabase = connectToDatabase
+module.exports.checkUserRole = checkUserRole
+

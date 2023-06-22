@@ -553,8 +553,10 @@ router.post("/signup", async (req, res) => {
 	const { name, username, email, college, password, confirmPassword } = req.body
 
 	if(password !== confirmPassword) {
-		return res.status(400).json(generateResponseMessage("error", "passwords do not match"))
+		return res.status(400).json(generateResponseMessage("error", "Passwords do not match"))
 	}
+
+	delete req.body.confirmPassword
 
 	// validate the request body
 	const { error } = signupValidator.validate(req.body)
@@ -567,23 +569,23 @@ router.post("/signup", async (req, res) => {
 		switch (userExistsStatus) {
 			case -1:
 				// -1 if an error occurs during the database query
-				return res.status(500).json(generateResponseMessage("error", "unable to contact the database temporarily"))
+				return res.status(500).json(generateResponseMessage("error", "Unable to contact the database temporarily"))
 			case -2:
 				// -1 if an unexpected error occurs during the database query
-				return res.status(418).json(generateResponseMessage("error", "database constraint broken!"))
+				return res.status(418).json(generateResponseMessage("error", "Database constraint broken!"))
 
 			case 1:
 				// found user's status is PERMANENT, already registered
-				return res.status(409).json(generateResponseMessage("error", `user already exists with email ${email}`))
+				return res.status(409).json(generateResponseMessage("error", `User already exists with email ${email}`))
 			case 2:
 				// found user's status is TEMPORARY, unregistered
-				return res.status(412).json(generateResponseMessage("error", `user already exists with email ${email}, but needs to finish registration`))
+				return res.status(412).json(generateResponseMessage("error", `User already exists with email ${email}, but needs to finish registration`))
 			case 3:
 				// found user's status is BANNED
-				return res.status(401).json(generateResponseMessage("error", `user banned: ${email}`))
+				return res.status(401).json(generateResponseMessage("error", `User banned: ${email}`))
 			case 4:
 				// username already taken
-				return res.status(422).json(generateResponseMessage("error", `username ${username} already taken`))
+				return res.status(422).json(generateResponseMessage("error", `Username ${username} already taken`))
 		}
 	} catch (err) {
 		// If any error occurs when checking if user exists, return a 500 Internal Server Error status code

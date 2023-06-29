@@ -1,6 +1,7 @@
 // External Dependencies
 const express = require("express")
 const bodyParser = require("body-parser")
+const cors = require("cors")
 
 // Environment Variables and Logger
 const dotenv = require("dotenv")
@@ -21,6 +22,7 @@ const { connectToDatabase } = require("./helpers/db")
 
 // Creating Express App
 const app = express()
+app.use(cors())
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec))

@@ -33,7 +33,7 @@ const passwordSchema = Joi.string()
 	})
 
 // Define the schema for name
-const firstnameSchema = Joi.string()
+const nameSchema = Joi.string()
 	.min(2)
 	.max(30)
 	.required()
@@ -46,19 +46,6 @@ const firstnameSchema = Joi.string()
 		'string.pattern.base': 'Name should only contain alphabet characters, periods and apostrophes.'
 	})
 
-// Define the schema for last name
-const lastnameSchema = Joi.string()
-	.min(1)
-	.max(20)
-	.required()
-	.regex(/^[a-zA-Z.'\s]*$/)
-	.messages({
-		'string.base': 'Name should be a string.',
-		'string.empty': 'Name cannot be empty.',
-		'string.min': 'Name should have a minimum length of 1 characters.',
-		'string.max': 'Name should have a maximum length of 20 characters.',
-		'string.pattern.base': 'Name should only contain alphabet characters, periods and apostrophes.'
-	})
 
 // Define the schema for phone
 const phoneSchema = Joi.string()
@@ -121,13 +108,11 @@ const loginValidator = Joi.object({
 
 // Define the schema for signup
 const signupValidator = Joi.object({
-	email: emailSchema,
-	password: passwordSchema,
-	firstname: firstnameSchema,
-	lastname: lastnameSchema,
-	phone: phoneSchema,
+	name: nameSchema,
 	username: usernameSchema,
-	college: collegeSchema
+	email: emailSchema,
+	college: collegeSchema,
+	password: passwordSchema
 })
 
 const otpValidator = Joi.object({

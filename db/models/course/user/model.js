@@ -85,7 +85,6 @@ const Course = mongoose.model('Course', courseSchema);
 // Export the Course model
 module.exports = Course;
 
-
 const userSchema = new mongoose.Schema({
 
 	firstname: 	{ type: String, required: true },

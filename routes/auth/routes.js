@@ -449,7 +449,8 @@ router.post("/login", async (req, res) => {
 			lastname: userDBObject.lastname,
 			email: userDBObject.email,
 			username: userDBObject.username,
-			loginTime: new Date().toString()
+			loginTime: new Date().toString(),
+			role: userDBObject.role
 		}
 		const token = jwt.sign(tokenPayload, process.env.SECRET_KEY, {
 			expiresIn: process.env.TOKEN_TIMEOUT

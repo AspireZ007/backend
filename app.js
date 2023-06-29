@@ -29,7 +29,6 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec))
 app.use('/auth', authRoutes)
 app.use('/connection', connectionRoutes)
 
-
 const dbConnectionSuccess = connectToDatabase()
 if (dbConnectionSuccess) {
 	const server = app.listen(process.env.PORT, () => {

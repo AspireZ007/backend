@@ -10,7 +10,7 @@ const logger = require("./logger");
 const matchPasswords = async (userPassword, dbPassword) => {
 	try {
 		const result = await bcrypt.compare(userPassword, dbPassword)
-		return result
+		result
 	} catch (err) {
 		logger.error(err)
 		return false

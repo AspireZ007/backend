@@ -72,7 +72,7 @@ router.post('/forgotPassword', async (req, res) => {
 	// validate the request body
 	const { error } = forgotPasswordValidator.validate(req.body)
 	if (error)
-		return res.status(400).json({message: error.details[0].message})
+		res.status(400).json({message: error.details[0].message})
 
 	// body params
 	const { email } = req.body
@@ -83,7 +83,7 @@ router.post('/forgotPassword', async (req, res) => {
 		const userDBObject = await User.findOne({ email })
 
 		if (!userDBObject) { // user does not exist
-			return res.status(404).json(generateResponseMessage("error", "No user exists with this email."))
+			res.status(404).json(generateResponseMessage("error", "No user exists with this email."))
 		} else {
 			const randomString = getRandomString()
 
@@ -97,15 +97,15 @@ router.post('/forgotPassword', async (req, res) => {
 			const resetPasswordEmailSentStatus = await sendPasswordResetEmail(randomString, email)
 			if (resetPasswordEmailSentStatus == 1) {
 				logger.info("success", `Email sent, user needs to reset password using link in ${email} with OTP ${otp}`)
-				return res.status(200).json(generateResponseMessage("success", `Email sent, user needs to reset password using link in ${email}`))
+				res.status(200).json(generateResponseMessage("success", `Email sent, user needs to reset password using link in ${email}`))
 			} else {
-				return res.status(500).json(generateResponseMessage("error", `unable to send email to: ${email}`))
+				res.status(500).json(generateResponseMessage("error", `unable to send email to: ${email}`))
 			}
 		}
 	} catch (err) {
 		// if errors exist while fetching database
 		logger.error(err)
-		return res.status(500).json(generateResponseMessage("error", err))
+		res.status(500).json(generateResponseMessage("error", err))
 	}
 })
 
@@ -170,12 +170,12 @@ router.put('/resetpassword/:otp', async (req, res) => {
 	// validate the request body
 	const { error } = resetPasswordValidator.validate(req.body)
 	if (error)
-		return res.status(400).json({message: error.details[0].message})
+		res.status(400).json({message: error.details[0].message})
 
 	// validate the request params
 	const { r_error } = otpValidator.validate(req.params)
 	if (r_error)
-		return res.status(400).json({message: r_error.details[0].message})
+		res.status(400).json({message: r_error.details[0].message})
 
 	const { newPassword } = req.body
 	const { otp } = req.params
@@ -184,7 +184,7 @@ router.put('/resetpassword/:otp', async (req, res) => {
 		//check if OTP is valid and does exist in our database
 		const user = await User.findOne({ resetOtp: otp, status: USERSTATUS_CODES.PERMANENT })
 		if (!user) {
-			return res.status(404).json(generateResponseMessage("error", "No user found with this resetOtp."))
+			res.status(404).json(generateResponseMessage("error", "No user found with this resetOtp."))
 		}
 
 		//change user status to permanent from temporary
@@ -259,7 +259,7 @@ router.post('/usernameAvailable', async (req, res) => {
 	// validate the request body
 	const { error } = usernameAvailableValidator.validate(req.params)
 	if (error)
-		return res.status(400).json({message: error.details[0].message})
+		res.status(400).json({message: error.details[0].message})
 
 	// extract username
 	const { username } = req.body
@@ -270,7 +270,7 @@ router.post('/usernameAvailable', async (req, res) => {
 		const user = await User.findOne({ username })
 
 		if (user) {
-			return res.status(409).json(generateResponseMessage("error", "Username already taken"))
+			res.status(409).json(generateResponseMessage("error", "Username already taken"))
 		}
 
 		res.status(200).json(generateResponseMessage("success", "Username available"))
@@ -330,7 +330,7 @@ router.get('/verify/:otp', async (req, res) => {
 	// validate the request body
 	const { error } = otpValidator.validate(req.params)
 	if (error)
-		return res.status(400).json({message: error.details[0].message})
+		res.status(400).json({message: error.details[0].message})
 
 	// extract otp
 	const { otp } = req.params
@@ -339,7 +339,7 @@ router.get('/verify/:otp', async (req, res) => {
 		//check if OTP is valid and does exist in our database
 		const user = await User.findOne({ otp })
 		if (!user) {
-			return res.status(404).json(generateResponseMessage("error", "No user with such OTP found."))
+			res.status(404).json(generateResponseMessage("error", "No user with such OTP found."))
 		}
 
 		//change user status to permanent from temporary
@@ -412,7 +412,7 @@ router.post("/login", async (req, res) => {
 	// validate the request body
 	const { error } = loginValidator.validate(req.body)
 	if (error)
-		return res.status(400).json({message: error.details[0].message})
+		res.status(400).json({message: error.details[0].message})
 
 	// body params
 	const { email, password } = req.body
@@ -423,23 +423,23 @@ router.post("/login", async (req, res) => {
 
 		// if user not found
 		if (!userDBObject) {
-			return res.status(404).json({ message: 'No username found with this email.' })
+			res.status(404).json({ message: 'No username found with this email.' })
 		}
 
 		// if passwords dont match
 		const match = await bcrypt.compare(password, userDBObject.password)
 		if (!match) {
-			return res.status(401).json({ message: 'Wrong password, unauthorized.' })
+			res.status(401).json({ message: 'Wrong password, unauthorized.' })
 		}
 
 		// if user is banned
 		if (userDBObject.status === USERSTATUS_CODES.BANNED) {
-			return res.status(403).json({ message: 'Login Prohibited' })
+			res.status(403).json({ message: 'Login Prohibited' })
 		}
 
 		// if user is temporary
 		if (userDBObject.status === USERSTATUS_CODES.TEMPORARY) {
-			return res.status(406).json({ message: 'User login incomplete, request not accepted.' })
+			res.status(406).json({ message: 'User login incomplete, request not accepted.' })
 		}
 
 		// issue token
@@ -554,7 +554,7 @@ router.post("/signup", async (req, res) => {
 	const { name, username, email, college, password, confirmPassword } = req.body
 
 	if(password !== confirmPassword) {
-		return res.status(400).json(generateResponseMessage("error", "Passwords do not match"))
+		res.status(400).json(generateResponseMessage("error", "Passwords do not match"))
 	}
 
 	delete req.body.confirmPassword
@@ -562,7 +562,7 @@ router.post("/signup", async (req, res) => {
 	// validate the request body
 	const { error } = signupValidator.validate(req.body)
 	if (error)
-		return res.status(400).json(generateResponseMessage("error", error.details[0].message))
+		res.status(400).json(generateResponseMessage("error", error.details[0].message))
 
 	try {
 		// query db if email or username already exists
@@ -570,28 +570,28 @@ router.post("/signup", async (req, res) => {
 		switch (userExistsStatus) {
 			case -1:
 				// -1 if an error occurs during the database query
-				return res.status(500).json(generateResponseMessage("error", "Unable to contact the database temporarily"))
+				res.status(500).json(generateResponseMessage("error", "Unable to contact the database temporarily"))
 			case -2:
 				// -1 if an unexpected error occurs during the database query
-				return res.status(418).json(generateResponseMessage("error", "Database constraint broken!"))
+				res.status(418).json(generateResponseMessage("error", "Database constraint broken!"))
 
 			case 1:
 				// found user's status is PERMANENT, already registered
-				return res.status(409).json(generateResponseMessage("error", `User already exists with email ${email}`))
+				res.status(409).json(generateResponseMessage("error", `User already exists with email ${email}`))
 			case 2:
 				// found user's status is TEMPORARY, unregistered
-				return res.status(412).json(generateResponseMessage("error", `User already exists with email ${email}, but needs to finish registration`))
+				res.status(412).json(generateResponseMessage("error", `User already exists with email ${email}, but needs to finish registration`))
 			case 3:
 				// found user's status is BANNED
-				return res.status(401).json(generateResponseMessage("error", `User banned: ${email}`))
+				res.status(401).json(generateResponseMessage("error", `User banned: ${email}`))
 			case 4:
 				// username already taken
-				return res.status(422).json(generateResponseMessage("error", `Username ${username} already taken`))
+				res.status(422).json(generateResponseMessage("error", `Username ${username} already taken`))
 		}
 	} catch (err) {
 		// If any error occurs when checking if user exists, return a 500 Internal Server Error status code
 		logger.error(err)
-		return res.status(500).json(generateResponseMessage("error", err))
+		res.status(500).json(generateResponseMessage("error", err))
 	}
 
 	try {
@@ -610,14 +610,14 @@ router.post("/signup", async (req, res) => {
 		// logger.log("sending " + email + " to sendVerificationEmail with otp " + randomString)
 		const verificationEmailSentStatus = await sendVerificationEmail(randomString, email)
 		if (verificationEmailSentStatus == 1) {
-			return res.status(200).json(generateResponseMessage("success", `Email sent, user needs to check mail in ${email}`))
+			res.status(200).json(generateResponseMessage("success", `Email sent, user needs to check mail in ${email}`))
 		} else {
-			return res.status(500).json(generateResponseMessage("error", `unable to send email to: ${email}`))
+			res.status(500).json(generateResponseMessage("error", `unable to send email to: ${email}`))
 		}
 	} catch (error) {
 		// If there are errors during user creation or email sending, return a 500 Internal Server Error status code
 		logger.error(error)
-		return res.status(500).json(generateResponseMessage("error", error))
+		res.status(500).json(generateResponseMessage("error", error))
 	}
 })
 

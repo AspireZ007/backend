@@ -120,7 +120,7 @@ const getRandomString = () => {
 		const randomIndex = Math.floor(Math.random() * chars.length)
 		result += chars[randomIndex]
 	}
-	return result
+	result
 }
 
 module.exports = { sendVerificationEmail, sendPasswordResetEmail, getRandomString }

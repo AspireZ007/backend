@@ -16,7 +16,7 @@ const checkJwt = (req, res, next) => {
   // Get the JWT token from the Authorization header
   const authHeader = req.headers.authorization
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ message: 'Unauthorized' })
+    res.status(401).json({ message: 'Unauthorized, invalid auth token.' })
   }
   const token = authHeader.slice(7)
 
@@ -24,11 +24,12 @@ const checkJwt = (req, res, next) => {
     // Verify the JWT token
     const tokenDecoded = jwt.verify(token, process.env.SECRET_KEY)
     req.userId = tokenDecoded.id
+		req.role = tokenDecoded.role
     return next()
   } catch (err) {
     console.error(err)
 		logger.error(err)
-    return res.status(401).json(generateResponseMessage("error", err))
+    res.status(401).json(generateResponseMessage("error", err))
   }
 }
 

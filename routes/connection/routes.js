@@ -3,6 +3,7 @@ const express = require('express')
 
 // Database
 const { Connection, CONNECTIONSTATUS_CODES } = require('../../db/models/connection/model')
+const User = require('../../db/models/user/model')
 
 // Validators 
 const { idValidator } = require('./validators')
@@ -14,7 +15,6 @@ const { generateResponseMessage } = require('../../helpers/response')
 
 // Logger
 const logger = require("../../helpers/logger")
-const User = require('../../db/models/user/model')
 
 // Instantiating the router object
 const router = express.Router()
@@ -49,7 +49,7 @@ const _getFolloweesById = async (followerId) => {
 			})
 
 		const responseObj = followees.map((connectionObject => connectionObject.following))
-		return responseObj
+		responseObj
 	} catch (err) {
 		console.log(err)
 		logger.error(err)
@@ -85,7 +85,7 @@ const _getFollowersById = async (followeeId) => {
 			})
 
 		const responseObj = followers.map((connectionObject => connectionObject.follower))
-		return responseObj
+		responseObj
 	} catch (err) {
 		console.log(err)
 		logger.error(err)
@@ -143,7 +143,7 @@ router.get('/followers', async (req, res) => {
 	} catch (err) {
 		logger.error(err)
 		console.error(err) // prints any other type of error
-		return res.status(500).json(generateResponseMessage("error", err))
+		res.status(500).json(generateResponseMessage("error", err))
 	}
 })
 
@@ -196,7 +196,7 @@ router.get('/followees', async (req, res) => {
 	} catch (err) {
 		logger.error(err)
 		console.error(err) // prints any other type of error
-		return res.status(500).json(generateResponseMessage("error", err))
+		res.status(500).json(generateResponseMessage("error", err))
 	}
 })
 
@@ -269,7 +269,7 @@ router.post('/follow/:id', async (req, res) => {
 	if (error) {
 		const obj = generateResponseMessage("error", error)
 		console.log(obj)
-		return res.status(400).json(obj)
+		res.status(400).json(obj)
 	}
 
 	// extract path
@@ -279,7 +279,7 @@ router.post('/follow/:id', async (req, res) => {
 	const userId = req.userId // from the middleware checkJWT
 
 	if (id.trim() === userId.trim()) {
-		return res.status(412).json(generateResponseMessage("error", "User cannot follow himself."))
+		res.status(412).json(generateResponseMessage("error", "User cannot follow himself."))
 	}
 
 	try {
@@ -293,7 +293,7 @@ router.post('/follow/:id', async (req, res) => {
 						(isUserActiveStatus == 0) ? "not found with this id" :
 							(isUserActiveStatus == 2) ? "is only temporarily registered" :
 								(isUserActiveStatus == 3) ? "is banned" : `!! returning ${isUserActiveStatus}`)
-			return res.status(403).json(generateResponseMessage("error", outputString))
+			res.status(403).json(generateResponseMessage("error", outputString))
 		}
 
 		// create the connection if it does not exist
@@ -307,7 +307,7 @@ router.post('/follow/:id', async (req, res) => {
 
 		if (followees) {
 			if (updateOneStatus.upsertedCount == 0) { // case where user is already following
-				return res.status(409).json(generateResponseMessage("error", followees))
+				res.status(409).json(generateResponseMessage("error", followees))
 			} else {
 				// rcase where user 
 				res.status(200).json(generateResponseMessage("success", followees))
@@ -318,7 +318,7 @@ router.post('/follow/:id', async (req, res) => {
 	} catch (err) {
 		logger.error(err)
 		console.error(err) // prints any other type of error
-		return res.status(500).json(generateResponseMessage("error", err))
+		res.status(500).json(generateResponseMessage("error", err))
 	}
 })
 
@@ -391,7 +391,7 @@ router.post('/unfollow/:id', async (req, res) => {
 	if (error) {
 		const obj = generateResponseMessage("error", error)
 		console.log(obj)
-		return res.status(400).json(obj)
+		res.status(400).json(obj)
 	}
 
 	// extract path
@@ -401,7 +401,7 @@ router.post('/unfollow/:id', async (req, res) => {
 	const userId = req.userId // from the middleware checkJWT
 
 	if (id.trim() === userId.trim()) {
-		return res.status(412).json(generateResponseMessage("error", "User cannot unfollow himself."))
+		res.status(412).json(generateResponseMessage("error", "User cannot unfollow himself."))
 	}
 
 	try {
@@ -415,7 +415,7 @@ router.post('/unfollow/:id', async (req, res) => {
 						(isUserActiveStatus == 0) ? "not found with this id" :
 							(isUserActiveStatus == 2) ? "is only temporarily registered" :
 								(isUserActiveStatus == 3) ? "is banned" : `!! returning ${isUserActiveStatus}`)
-			return res.status(403).json(generateResponseMessage("error", outputString))
+			res.status(403).json(generateResponseMessage("error", outputString))
 		}
 
 		// check if a valid follow exists
@@ -443,7 +443,7 @@ router.post('/unfollow/:id', async (req, res) => {
 	} catch (err) {
 		logger.error(err)
 		console.error(err) // prints any other type of error
-		return res.status(500).json(generateResponseMessage("error", err))
+		res.status(500).json(generateResponseMessage("error", err))
 	}
 })
 
